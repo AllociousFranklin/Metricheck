@@ -1,4 +1,4 @@
-﻿/**
+/**
  * api/audit.js - Vercel Serverless Function Handler
  * Processes multi-view package images through Gemini multimodal extraction
  * and the Legal Metrology rule engine.
@@ -11,8 +11,7 @@ export const config = {
     bodyParser: {
       sizeLimit: '10mb'
     }
-  },
-  maxDuration: 60
+  }
 };
 
 export default async function handler(req, res) {

@@ -203,6 +203,10 @@ export async function extractLabelFields(preparedImages, options = {}) {
 
     return validated;
   } catch (err) {
+    if (options.allowMock) {
+      console.warn(`Gemini live API call failed (${err.message}). Using mock extraction data fallback.`);
+      return getMockExtractionData();
+    }
     return {
       success: false,
       error: `Gemini Extraction Failed: ${err.message}`

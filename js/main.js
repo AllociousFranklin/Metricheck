@@ -35,7 +35,7 @@ class PackageScannerApp {
     this.btnClearAllUploads = document.getElementById('btn-clear-all-uploads');
     this.uploadStatusCount = document.getElementById('upload-status-count');
 
-    this.uploadedImages = [null, null, null, null];
+    this.uploadedImages = [];
     this.activeSlotTarget = null;
 
     this.camera = new PackageCamera(this.videoElement);
@@ -78,18 +78,38 @@ class PackageScannerApp {
     });
 
     // Torch toggle button
-    this.btnTorch.addEventListener('click', async () => {
+    this.btnTorch?.addEventListener('click', async () => {
       const isTorchOn = await this.camera.toggleTorch();
       this.btnTorch.style.color = isTorchOn ? '#f59e0b' : '#ffffff';
     });
 
+    // History Modal Listeners
+    document.getElementById('btn-open-history')?.addEventListener('click', () => this.openHistory());
+    document.getElementById('btn-close-history')?.addEventListener('click', () => this.closeHistory());
+    document.getElementById('btn-dismiss-history')?.addEventListener('click', () => this.closeHistory());
+    document.getElementById('btn-clear-history')?.addEventListener('click', () => this.clearHistory());
+
+    // Help Modal Listeners
+    document.getElementById('btn-open-help')?.addEventListener('click', () => this.openHelp());
+    document.getElementById('btn-close-help')?.addEventListener('click', () => this.closeHelp());
+    document.getElementById('btn-dismiss-help')?.addEventListener('click', () => this.closeHelp());
+
     // Handle tab visibility change (iOS Safari suspends camera in background)
-    document.addEventListener('visibilitychange', () => {
+    document.addEventListener('visibilitychange', async () => {
       if (document.hidden) {
         if (this.pipeline) this.pipeline.stop();
       } else {
-        if (this.pipeline && this.isInitialized && !this.captureManager.isDone() && this.currentMode === 'live') {
-          this.pipeline.start();
+        if (this.isInitialized && !this.captureManager.isDone() && this.currentMode === 'live') {
+          if (!this.camera.track || this.camera.track.readyState !== 'live') {
+            try {
+              await this.camera.start();
+            } catch (e) {
+              console.warn('Camera restart after visibility change failed:', e);
+            }
+          }
+          if (this.pipeline && !this.pipeline.isRunning) {
+            this.pipeline.start();
+          }
         }
       }
     });
@@ -170,6 +190,9 @@ class PackageScannerApp {
 
       this.hideToast();
 
+      // Save audit to localStorage history
+      this.saveAuditToHistory(report);
+
       // Render interactive compliance report
       this.uiRenderer.showComplianceReport(
         report,
@@ -208,7 +231,11 @@ class PackageScannerApp {
         this.btnTorch.style.display = 'flex';
       }
 
-      // 2. Initialize Computer Vision Worker Pipeline
+      // 2. Initialize Computer Vision Worker Pipeline (terminating any previous worker)
+      if (this.pipeline) {
+        this.pipeline.destroy();
+      }
+
       this.showToast('Initializing Computer Vision Worker...');
       this.pipeline = new FramePipeline(this.videoElement, 'workers/cv-worker.js', CONFIG);
 
@@ -230,7 +257,7 @@ class PackageScannerApp {
       // 4. Start Pipeline Loop
       this.pipeline.start();
       this.isInitialized = true;
-      this.uiRenderer.resetUI(CONFIG.TARGET_VIEWS);
+      this.uiRenderer.resetUI(CONFIG.SUGGESTED_VIEWS || 4);
 
     } catch (err) {
       console.error('Failed to start scanner:', err);
@@ -246,11 +273,14 @@ class PackageScannerApp {
   async handleFrameResult(detection) {
     if (this.captureManager.isDone()) return;
 
+    const procW = detection.procW || CONFIG.PROCESSING_WIDTH || 480;
+    const procH = detection.procH || CONFIG.PROCESSING_HEIGHT || 360;
+
     // 1. Update Motion Tracker with detected bounding box
     const trackerState = this.tracker.update(
       detection.bbox,
-      CONFIG.PROCESSING_WIDTH,
-      CONFIG.PROCESSING_HEIGHT
+      procW,
+      procH
     );
 
     // 2. Evaluate Frame Quality
@@ -261,8 +291,8 @@ class PackageScannerApp {
       detection,
       trackerState,
       qualityReport,
-      CONFIG.PROCESSING_WIDTH,
-      CONFIG.PROCESSING_HEIGHT
+      procW,
+      procH
     );
 
     // 4. Evaluate for Automatic Non-Duplicate Capture
@@ -485,6 +515,124 @@ class PackageScannerApp {
     if (this.btnProcessUpload) {
       this.btnProcessUpload.disabled = count === 0;
     }
+  }
+
+  /* =========================================================================
+   * SCAN HISTORY & STATUTORY HELP MODULES
+   * ========================================================================= */
+
+  saveAuditToHistory(report) {
+    try {
+      const historyJson = localStorage.getItem('package_audit_history');
+      const history = historyJson ? JSON.parse(historyJson) : [];
+      
+      const item = {
+        scan_id: report.scan_id || `scan_${Date.now().toString(36)}`,
+        timestamp: report.timestamp || new Date().toISOString(),
+        commodity_name: report.product?.commodity_name || report.extracted_fields?.commodity_name?.value || 'Packaged Commodity',
+        overall_compliant: !!report.summary?.overall_compliant,
+        compliance_grade: report.summary?.compliance_grade || (report.summary?.overall_compliant ? 'COMPLIANT' : 'NON-COMPLIANT'),
+        passed: report.summary?.passed || 0,
+        failed: report.summary?.failed || 0,
+        report
+      };
+
+      // Keep latest 25 scans
+      history.unshift(item);
+      if (history.length > 25) history.pop();
+
+      localStorage.setItem('package_audit_history', JSON.stringify(history));
+    } catch (e) {
+      console.warn('Failed to save audit history to localStorage:', e);
+    }
+  }
+
+  openHistory() {
+    this.renderHistory();
+    const modal = document.getElementById('history-modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  closeHistory() {
+    const modal = document.getElementById('history-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  renderHistory() {
+    const container = document.getElementById('history-list');
+    if (!container) return;
+
+    let history = [];
+    try {
+      const historyJson = localStorage.getItem('package_audit_history');
+      if (historyJson) history = JSON.parse(historyJson);
+    } catch (e) {
+      console.warn('Could not read history:', e);
+    }
+
+    if (history.length === 0) {
+      container.innerHTML = `
+        <div class="history-empty-state">
+          <span>No previous audits found. Scanned package compliance reports will appear here.</span>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = '';
+    history.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      const dateStr = new Date(item.timestamp).toLocaleString();
+      const badgeClass = item.overall_compliant ? 'chip-pass' : 'chip-fail';
+      const icon = item.overall_compliant ? '✓' : '✕';
+
+      div.innerHTML = `
+        <div class="history-info">
+          <span class="history-title">${item.commodity_name}</span>
+          <span class="history-meta">${dateStr} • ${item.scan_id}</span>
+        </div>
+        <span class="history-badge status-chip ${badgeClass}">${icon} ${item.compliance_grade}</span>
+      `;
+
+      div.addEventListener('click', () => {
+        this.closeHistory();
+        this.uiRenderer.showComplianceReport(
+          item.report,
+          (rep) => {
+            const blob = new Blob([JSON.stringify(rep, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `compliance_report_${rep.scan_id}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          },
+          () => this.openHistory()
+        );
+      });
+
+      container.appendChild(div);
+    });
+  }
+
+  clearHistory() {
+    if (confirm('Are you sure you want to clear all scan history?')) {
+      try {
+        localStorage.removeItem('package_audit_history');
+        this.renderHistory();
+      } catch (e) {}
+    }
+  }
+
+  openHelp() {
+    const modal = document.getElementById('help-modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  closeHelp() {
+    const modal = document.getElementById('help-modal');
+    if (modal) modal.style.display = 'none';
   }
 }
 

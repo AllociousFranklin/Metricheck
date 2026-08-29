@@ -58,8 +58,15 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const pathname = url.pathname;
+  let pathname;
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    pathname = decodeURIComponent(url.pathname);
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('400 Bad Request: Malformed URL');
+    return;
+  }
 
   // API Endpoint: /api/audit (Full Compliance Cross-Check)
   if (pathname === '/api/audit' && req.method === 'POST') {
@@ -103,7 +110,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Static File Serving
-  let filePath = path.join(ROOT_DIR, pathname === '/' ? 'index.html' : pathname);
+  let filePath = path.join(ROOT_DIR, pathname === '/' ? 'index.html' : pathname.replace(/^\//, ''));
 
   // Security: prevent directory traversal
   if (!filePath.startsWith(ROOT_DIR)) {

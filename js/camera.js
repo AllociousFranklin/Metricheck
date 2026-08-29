@@ -151,17 +151,19 @@ export class PackageCamera {
    * Captures a high-resolution still frame.
    * Prefers hardware sensor still (12MP+) via ImageCapture, with Canvas fallback.
    */
-  async captureHighResFrame(cropBbox = null) {
+  async captureHighResFrame(cropBbox = null, procW = 480, procH = 360) {
     let sourceCanvas = null;
 
     // 1. Try Hardware ImageCapture API
     if (this.imageCapture) {
       try {
-        const photoBlob = await this.imageCapture.takePhoto({
-          imageHeight: 3000,
-          imageWidth: 4000,
-          fillLightMode: 'auto'
-        });
+        const photoSettings = { fillLightMode: 'auto' };
+        if (typeof this.track.getCapabilities === 'function') {
+          const caps = this.track.getCapabilities();
+          if (caps.imageWidth?.max) photoSettings.imageWidth = caps.imageWidth.max;
+          if (caps.imageHeight?.max) photoSettings.imageHeight = caps.imageHeight.max;
+        }
+        const photoBlob = await this.imageCapture.takePhoto(photoSettings);
         const bitmap = await createImageBitmap(photoBlob);
         sourceCanvas = document.createElement('canvas');
         sourceCanvas.width = bitmap.width;
@@ -190,18 +192,21 @@ export class PackageCamera {
       return sourceCanvas;
     }
 
-    // Otherwise crop the bounding box with slight safety padding (e.g. 5%)
-    const cropCanvas = document.createElement('canvas');
+    // Otherwise crop the bounding box scaled to high-res coordinates with 5% safety padding
+    const scaleX = sourceCanvas.width / (procW || sourceCanvas.width);
+    const scaleY = sourceCanvas.height / (procH || sourceCanvas.height);
+
     const padX = cropBbox.width * 0.05;
     const padY = cropBbox.height * 0.05;
 
-    const sx = Math.max(0, cropBbox.x - padX);
-    const sy = Math.max(0, cropBbox.y - padY);
-    const sw = Math.min(sourceCanvas.width - sx, cropBbox.width + padX * 2);
-    const sh = Math.min(sourceCanvas.height - sy, cropBbox.height + padY * 2);
+    const sx = Math.max(0, Math.round((cropBbox.x - padX) * scaleX));
+    const sy = Math.max(0, Math.round((cropBbox.y - padY) * scaleY));
+    const sw = Math.min(sourceCanvas.width - sx, Math.round((cropBbox.width + padX * 2) * scaleX));
+    const sh = Math.min(sourceCanvas.height - sy, Math.round((cropBbox.height + padY * 2) * scaleY));
 
-    cropCanvas.width = Math.round(sw);
-    cropCanvas.height = Math.round(sh);
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = Math.max(1, sw);
+    cropCanvas.height = Math.max(1, sh);
 
     const cropCtx = cropCanvas.getContext('2d');
     cropCtx.drawImage(sourceCanvas, sx, sy, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height);
@@ -226,6 +231,9 @@ export class PackageCamera {
       this.stream = null;
       this.track = null;
       this.imageCapture = null;
+    }
+    if (this.video) {
+      this.video.srcObject = null;
     }
   }
 }

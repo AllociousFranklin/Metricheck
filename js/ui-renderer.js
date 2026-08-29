@@ -201,23 +201,28 @@ export class UIRenderer {
   triggerCaptureFlash() {
     // Haptic feedback on mobile (brief vibration pulse)
     if (navigator.vibrate) {
-      navigator.vibrate(50);
+      try { navigator.vibrate(50); } catch (e) {}
     }
 
-    const flashDiv = document.createElement('div');
-    flashDiv.style.position = 'absolute';
-    flashDiv.style.top = '0';
-    flashDiv.style.left = '0';
-    flashDiv.style.width = '100%';
-    flashDiv.style.height = '100%';
-    flashDiv.className = 'flash-effect';
-    this.scannerContainer.appendChild(flashDiv);
-
-    setTimeout(() => {
-      if (flashDiv.parentNode) {
-        flashDiv.parentNode.removeChild(flashDiv);
+    if (!this._flashEl) {
+      this._flashEl = document.createElement('div');
+      this._flashEl.style.position = 'absolute';
+      this._flashEl.style.top = '0';
+      this._flashEl.style.left = '0';
+      this._flashEl.style.width = '100%';
+      this._flashEl.style.height = '100%';
+      this._flashEl.style.pointerEvents = 'none';
+      this._flashEl.style.zIndex = '15';
+      if (this.scannerContainer) {
+        this.scannerContainer.appendChild(this._flashEl);
       }
-    }, 400);
+    }
+
+    this._flashEl.className = 'flash-effect';
+    clearTimeout(this._flashTimeout);
+    this._flashTimeout = setTimeout(() => {
+      if (this._flashEl) this._flashEl.className = '';
+    }, 350);
   }
 
   /**
@@ -393,6 +398,13 @@ export class UIRenderer {
     if (btnDownload) {
       btnDownload.onclick = () => {
         if (onDownloadJson) onDownloadJson(report);
+      };
+    }
+
+    const btnPrint = document.getElementById('btn-print-report');
+    if (btnPrint) {
+      btnPrint.onclick = () => {
+        window.print();
       };
     }
   }

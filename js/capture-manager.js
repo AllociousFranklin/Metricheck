@@ -54,9 +54,9 @@ export class CaptureManager {
       const highResCanvas = await this.camera.captureHighResFrame();
 
       // 2. Crop to detected package bbox for accurate perceptual hashing.
-      //    Scale bbox from processing resolution (480×360) to high-res capture resolution.
-      const procW = this.config.PROCESSING_WIDTH;
-      const procH = this.config.PROCESSING_HEIGHT;
+      //    Scale bbox from processing resolution to high-res capture resolution.
+      const procW = detection.procW || this.config.PROCESSING_WIDTH || 480;
+      const procH = detection.procH || this.config.PROCESSING_HEIGHT || 360;
       const scaleX = highResCanvas.width / procW;
       const scaleY = highResCanvas.height / procH;
 

@@ -58,7 +58,11 @@ export class FramePipeline {
         }
 
         if (this.callback && this.isRunning) {
-          this.callback(e.data);
+          this.callback({
+            ...e.data,
+            procW: this.currentProcW || this.config.PROCESSING_WIDTH || 480,
+            procH: this.currentProcH || this.config.PROCESSING_HEIGHT || 360
+          });
         }
       }
     };
@@ -98,10 +102,26 @@ export class FramePipeline {
     this.isProcessing = true;
 
     try {
-      // Downscale frame for fast real-time computer vision processing
+      const vWidth = this.video.videoWidth || 640;
+      const vHeight = this.video.videoHeight || 480;
+      const maxDim = this.config.MAX_PROCESSING_DIMENSION || 480;
+
+      let procW, procH;
+      if (vWidth >= vHeight) {
+        procW = maxDim;
+        procH = Math.max(160, Math.round(maxDim * (vHeight / vWidth)));
+      } else {
+        procH = maxDim;
+        procW = Math.max(160, Math.round(maxDim * (vWidth / vHeight)));
+      }
+
+      this.currentProcW = procW;
+      this.currentProcH = procH;
+
+      // Downscale frame preserving aspect ratio
       const bitmap = await createImageBitmap(this.video, {
-        resizeWidth: this.config.PROCESSING_WIDTH,
-        resizeHeight: this.config.PROCESSING_HEIGHT,
+        resizeWidth: procW,
+        resizeHeight: procH,
         resizeQuality: 'low'
       });
 
@@ -110,7 +130,11 @@ export class FramePipeline {
         {
           type: 'PROCESS_FRAME',
           bitmap,
-          config: this.config
+          config: {
+            ...this.config,
+            PROCESSING_WIDTH: procW,
+            PROCESSING_HEIGHT: procH
+          }
         },
         [bitmap]
       );

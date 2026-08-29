@@ -556,6 +556,8 @@ html, body {
   font-size: 13px;
   z-index: 20;
   color: #fff;
+  opacity: 0;
+  pointer-events: none;
   transition: opacity 0.3s ease;
 }
 
@@ -1020,40 +1022,147 @@ html, body {
 
 /* Mobile Touch & Layout Optimizations */
 button, .icon-btn, .mode-switch-btn, .btn-primary, .btn-secondary, .btn-live-finish {
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+/* History List Styles */
+.history-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  margin-top: 6px;
 }
 
-@media (max-width: 480px) {
-  .top-bar {
-    padding: max(12px, env(safe-area-inset-top, 12px)) 12px 8px;
-  }
-  
-  .logo-title {
-    font-size: 15px;
-  }
+.history-empty-state {
+  text-align: center;
+  padding: 30px 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
 
-  .mode-switch-btn {
-    padding: 5px 10px;
-    font-size: 11px;
-  }
+.history-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
 
-  .mode-switch-btn span {
-    display: inline;
-  }
+.history-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateX(2px);
+}
 
-  .thumbnail-strip {
-    max-width: calc(100% - 130px);
-  }
+.history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 
-  .btn-live-finish {
-    font-size: 11px;
-    padding: 6px 10px;
-  }
+.history-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
 
+.history-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.history-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Help Guide Styles */
+.help-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.help-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.help-card h4 {
+  font-size: 13px;
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.help-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 0;
+}
+
+.help-card li {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.help-card li strong {
+  color: #f3f4f6;
+}
+
+.help-card li em {
+  color: #fbbf24;
+  font-style: normal;
+}
+
+/* Print / PDF Styles for Audit Report */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  #scanner-container > *:not(#compliance-modal) {
+    display: none !important;
+  }
+  #compliance-modal {
+    position: static !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
+  }
   .modal-card {
-    padding: 20px 16px;
-    max-height: 85vh;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+  }
+  .modal-actions, .icon-btn, .details-summary {
+    display: none !important;
+  }
+  .compliance-title, #report-title {
+    color: #000 !important;
+  }
+  .compliance-msg, .stat-label {
+    color: #444 !important;
   }
 }
 

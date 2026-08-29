@@ -7,6 +7,7 @@ export const CONFIG = {
   MAX_VIEWS: 12,               // Safety upper bound for continuous scanning
 
   // Processing resolution (frame downscaled before sending to CV Worker for high fps)
+  MAX_PROCESSING_DIMENSION: 480, // Maximum dimension for dynamic aspect ratio preservation
   PROCESSING_WIDTH: 480,
   PROCESSING_HEIGHT: 360,
 
