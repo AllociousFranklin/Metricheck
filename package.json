@@ -1,17 +1,43 @@
 {
-  "name": "multi-view-package-scanner",
+  "name": "legal-metrology-compliance-platform",
   "version": "1.0.0",
-  "description": "Multi-View Package Scanning System (Constraint #1) with real-time OpenCV.js, motion tracking, quality gating, and perceptual hash deduplication.",
+  "description": "Enterprise Legal Metrology (Packaged Commodities) Compliance Platform with Multi-View Computer Vision Auto-Scanning and Multimodal AI Rule Engine.",
   "type": "module",
   "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
     "start": "node backend/server.js",
     "test": "node test-suite.mjs && node test-compliance-suite.mjs",
     "test:compliance": "node test-compliance-suite.mjs",
-    "test:scanner": "node test-suite.mjs",
-    "serve": "npx serve -l 3000 .",
-    "serve:py": "python -m http.server 3000"
+    "test:scanner": "node test-suite.mjs"
   },
-  "keywords": ["computer-vision", "opencv-js", "package-scanner", "phash", "ocr-pipeline"],
+  "dependencies": {
+    "@tanstack/react-query": "^5.60.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^11.11.0",
+    "lucide-react": "^0.454.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "recharts": "^2.13.3",
+    "tailwind-merge": "^2.5.4",
+    "tesseract.js": "^7.0.0",
+    "zustand": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.15",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.0"
+  },
+  "keywords": ["legal-metrology", "computer-vision", "opencv-js", "package-scanner", "gemini-flash", "compliance-engine"],
   "author": "",
   "license": "MIT"
 }

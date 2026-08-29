@@ -1,0 +1,127 @@
+import type { DashboardStats } from '@/types';
+
+export const mockDashboardStats: DashboardStats = {
+  totalInspections: 1284,
+  compliant: 823,
+  nonCompliant: 347,
+  needsReview: 114,
+  complianceRate: 64.1,
+  recentActivity: [
+    {
+      id: 'act-01',
+      type: 'inspection_completed',
+      description: 'Inspection LM-2026-00135 completed for HomeFresh Floor Cleaner',
+      timestamp: '2026-08-28T14:30:00Z',
+    },
+    {
+      id: 'act-02',
+      type: 'report_generated',
+      description: 'Report RPT-2026-008 generated for LM-2026-00135',
+      timestamp: '2026-08-28T15:00:00Z',
+    },
+    {
+      id: 'act-03',
+      type: 'finding_reviewed',
+      description: 'Review completed for LittleAngel Baby Powder (Readability Issue)',
+      timestamp: '2026-08-27T10:15:00Z',
+    },
+    {
+      id: 'act-04',
+      type: 'inspection_created',
+      description: 'New inspection LM-2026-00136 started for AquaPure Drinking Water',
+      timestamp: '2026-08-27T09:00:00Z',
+    },
+    {
+      id: 'act-05',
+      type: 'inspection_completed',
+      description: 'Inspection LM-2026-00132 completed for GoldenDrop Mustard Oil',
+      timestamp: '2026-08-22T09:45:00Z',
+    },
+    {
+      id: 'act-06',
+      type: 'finding_reviewed',
+      description: 'Review completed for HomeFresh Floor Cleaner',
+      timestamp: '2026-08-21T11:30:00Z',
+    },
+    {
+      id: 'act-07',
+      type: 'inspection_completed',
+      description: 'Inspection LM-2026-00129 completed for PureHarvest Basmati Rice',
+      timestamp: '2026-08-20T13:50:00Z',
+    },
+    {
+      id: 'act-08',
+      type: 'inspection_created',
+      description: 'Inspection LM-2026-00128 created for NaturaGlow Herbal Shampoo',
+      timestamp: '2026-08-15T10:00:00Z',
+    }
+  ],
+  complianceTrend: [
+    { date: '2025-09', compliant: 50, nonCompliant: 30, needsReview: 10, total: 90 },
+    { date: '2025-10', compliant: 55, nonCompliant: 28, needsReview: 12, total: 95 },
+    { date: '2025-11', compliant: 60, nonCompliant: 32, needsReview: 8, total: 100 },
+    { date: '2025-12', compliant: 65, nonCompliant: 25, needsReview: 15, total: 105 },
+    { date: '2026-01', compliant: 70, nonCompliant: 24, needsReview: 10, total: 104 },
+    { date: '2026-02', compliant: 68, nonCompliant: 26, needsReview: 12, total: 106 },
+    { date: '2026-03', compliant: 75, nonCompliant: 20, needsReview: 9, total: 104 },
+    { date: '2026-04', compliant: 80, nonCompliant: 22, needsReview: 8, total: 110 },
+    { date: '2026-05', compliant: 85, nonCompliant: 18, needsReview: 7, total: 110 },
+    { date: '2026-06', compliant: 82, nonCompliant: 21, needsReview: 11, total: 114 },
+    { date: '2026-07', compliant: 88, nonCompliant: 15, needsReview: 6, total: 109 },
+    { date: '2026-08', compliant: 45, nonCompliant: 10, needsReview: 4, total: 59 }, // Current month incomplete
+  ],
+  violationCategories: [
+    { category: 'MRP', count: 120, percentage: 25 },
+    { category: 'Net Quantity', count: 85, percentage: 18 },
+    { category: 'Manufacturer/Packer', count: 70, percentage: 15 },
+    { category: 'Consumer Care', count: 65, percentage: 14 },
+    { category: 'Date Information', count: 50, percentage: 10 },
+    { category: 'Country of Origin', count: 35, percentage: 7 },
+    { category: 'Readability', count: 25, percentage: 5 },
+    { category: 'Font Size', count: 15, percentage: 3 },
+    { category: 'Placement', count: 10, percentage: 2 },
+    { category: 'Other', count: 5, percentage: 1 },
+  ],
+  reviewQueue: [
+    {
+      id: 'rev-01',
+      inspectionId: 'LM-2026-00135',
+      productName: 'HomeFresh Floor Cleaner',
+      findingType: 'Readability Issue',
+      severity: 'MEDIUM',
+      createdAt: '2026-08-02T11:15:00Z',
+    },
+    {
+      id: 'rev-02',
+      inspectionId: 'LM-2026-00131',
+      productName: 'LittleAngel Baby Powder',
+      findingType: 'Readability Issue',
+      severity: 'MEDIUM',
+      createdAt: '2026-08-05T13:10:00Z',
+    },
+    {
+      id: 'rev-03',
+      inspectionId: 'LM-2026-00128',
+      productName: 'NaturaGlow Herbal Shampoo',
+      findingType: 'Readability Issue',
+      severity: 'MEDIUM',
+      createdAt: '2026-08-15T10:30:00Z',
+    },
+    {
+      id: 'rev-04',
+      inspectionId: 'LM-2026-00140',
+      productName: 'Britannia Good Day Biscuits',
+      findingType: 'Font Size Issue',
+      severity: 'LOW',
+      createdAt: '2026-08-28T09:00:00Z',
+    },
+    {
+      id: 'rev-05',
+      inspectionId: 'LM-2026-00142',
+      productName: 'Haldiram Aloo Bhujia',
+      findingType: 'Placement Issue',
+      severity: 'LOW',
+      createdAt: '2026-08-28T11:00:00Z',
+    }
+  ],
+};

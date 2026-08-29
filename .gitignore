@@ -1,4 +1,4 @@
-﻿# Environment and Secrets
+# Environment and Secrets
 .env
 .env*.local
 
@@ -11,5 +11,7 @@ yarn-error.log*
 # Vercel & build artifacts
 .vercel/
 dist/
+*.tsbuildinfo
+scratch/
 .DS_Store
 Thumbs.db
