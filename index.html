@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Multi-View Package Scanner</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="scanner-container">
+    <!-- Camera Video Feed -->
+    <video id="camera-feed" playsinline webkit-playsinline autoplay muted></video>
+
+    <!-- Overlay Canvas for Bounding Box & Annotations -->
+    <canvas id="overlay-canvas"></canvas>
+
+    <!-- Top Header Bar -->
+    <header class="top-bar">
+      <div class="logo">
+        <span class="logo-badge">AI SCAN</span>
+        <span class="logo-title">PackageView</span>
+      </div>
+      <div class="header-controls">
+        <button id="btn-torch" class="icon-btn" title="Toggle Flashlight" style="display: none;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+          </svg>
+        </button>
+        <button id="btn-reset" class="icon-btn" title="Reset Scan">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Center Guidance Notification Pill -->
+    <div id="guidance-banner" class="guidance-pill state-waiting">
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+      </div>
+      <div class="status-text-wrapper">
+        <span id="status-primary">Align product in camera</span>
+        <span id="status-secondary">Place against plain contrasting surface</span>
+      </div>
+    </div>
+
+    <!-- Live Telemetry / Quality HUD (Top Right) -->
+    <div id="telemetry-card" class="telemetry-card">
+      <div class="telemetry-item" id="tel-motion">
+        <span class="tel-label">Motion</span>
+        <span class="tel-val" id="val-motion">--</span>
+      </div>
+      <div class="telemetry-item" id="tel-sharpness">
+        <span class="tel-label">Sharpness</span>
+        <span class="tel-val" id="val-sharpness">--</span>
+      </div>
+      <div class="telemetry-item" id="tel-lighting">
+        <span class="tel-label">Light</span>
+        <span class="tel-val" id="val-lighting">--</span>
+      </div>
+    </div>
+
+    <!-- Bottom HUD & Capture Strip -->
+    <footer class="bottom-hud">
+      <!-- Progress Bar and Counter -->
+      <div class="progress-section">
+        <div class="progress-label-row">
+          <span class="progress-title">Distinct Views Captured</span>
+          <span class="progress-count" id="view-counter-text">0 / 4</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Thumbnail Strip -->
+      <div class="thumbnail-container">
+        <div class="thumbnail-strip" id="thumbnail-strip">
+          <div class="thumbnail-slot" data-index="1">
+            <span class="slot-number">1</span>
+            <span class="slot-label">Front</span>
+          </div>
+          <div class="thumbnail-slot" data-index="2">
+            <span class="slot-number">2</span>
+            <span class="slot-label">Side A</span>
+          </div>
+          <div class="thumbnail-slot" data-index="3">
+            <span class="slot-number">3</span>
+            <span class="slot-label">Back</span>
+          </div>
+          <div class="thumbnail-slot" data-index="4">
+            <span class="slot-number">4</span>
+            <span class="slot-label">Side B</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Start / Welcome Screen Overlay -->
+    <div id="welcome-modal" class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-badge">Constraint #1</div>
+        <h2>Multi-View Auto Scanner</h2>
+        <p class="modal-desc">
+          Automated multi-angle product capture for high-precision OCR extraction.
+        </p>
+
+        <div class="instruction-steps">
+          <div class="step-item">
+            <div class="step-icon">🎯</div>
+            <div class="step-text">
+              <strong>1. Place Product</strong>
+              <span>Position on a table or plain contrasting background.</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-icon">🔄</div>
+            <div class="step-text">
+              <strong>2. Rotate Slowly</strong>
+              <span>Turn the package steadily to reveal all 4 distinct sides.</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-icon">⚡</div>
+            <div class="step-text">
+              <strong>3. Hands-Free Auto-Capture</strong>
+              <span>Images are captured automatically when stable & sharp. Zero buttons needed.</span>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-start" class="btn-primary">
+          <span>Start Scanner</span>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M5 13l4 4L19 7"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scan Complete Modal -->
+    <div id="complete-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card modal-large">
+        <div class="modal-badge success-badge">✓ Scan Complete</div>
+        <h2>All 4 Views Captured</h2>
+        <p class="modal-desc">Clean, de-duplicated, high-resolution dataset ready for OCR pipeline.</p>
+
+        <div class="gallery-grid" id="captured-gallery"></div>
+
+        <div class="modal-actions">
+          <button id="btn-run-compliance" class="btn-primary">
+            <span>Run Legal Metrology Audit (Constraint #2)</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+          </button>
+          <div style="display:flex; gap:10px;">
+            <button id="btn-download-all" class="btn-secondary" style="flex:1;">Download Images</button>
+            <button id="btn-restart-scan" class="btn-secondary" style="flex:1;">New Scan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compliance Report Modal (Constraint #2) -->
+    <div id="compliance-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card modal-large" style="max-height: 90vh; overflow-y: auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="modal-badge" id="report-grade-badge">Audit Report</div>
+          <button id="btn-close-compliance" class="icon-btn" style="width:32px; height:32px;">✕</button>
+        </div>
+        
+        <h2 id="report-title">Legal Metrology Compliance Report</h2>
+        <p class="modal-desc" id="report-subtitle">Automated cross-check against Legal Metrology Rules, 2011.</p>
+
+        <!-- Summary Score Banner -->
+        <div id="compliance-summary-card" class="compliance-summary-grid">
+          <div class="summary-stat-box passed">
+            <span class="stat-num" id="stat-passed">0</span>
+            <span class="stat-label">Passed</span>
+          </div>
+          <div class="summary-stat-box warnings">
+            <span class="stat-num" id="stat-warnings">0</span>
+            <span class="stat-label">Warnings</span>
+          </div>
+          <div class="summary-stat-box failed">
+            <span class="stat-num" id="stat-failed">0</span>
+            <span class="stat-label">Failed</span>
+          </div>
+        </div>
+
+        <!-- Compliance Checklist Container -->
+        <div class="compliance-checklist" id="compliance-checklist">
+          <!-- Dynamic check rows will be rendered here -->
+        </div>
+
+        <!-- Extracted Fields Collapsible Panel -->
+        <details class="extracted-details-panel">
+          <summary class="details-summary">View Extracted Label Fields (18 declarations)</summary>
+          <pre id="extracted-fields-json" class="json-preview"></pre>
+        </details>
+
+        <div class="modal-actions" style="margin-top: 10px;">
+          <button id="btn-download-report" class="btn-primary">Download Compliance Report (JSON)</button>
+          <button id="btn-back-to-gallery" class="btn-secondary">Back to Images</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CV Worker Status Toast -->
+    <div id="worker-status-toast" class="toast-card">
+      <div class="spinner-small"></div>
+      <span id="worker-status-msg">Initializing Computer Vision Engine...</span>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

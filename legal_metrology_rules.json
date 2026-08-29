@@ -1,0 +1,265 @@
+{
+  "source": "The Legal Metrology (Packaged Commodities) Rules, 2011 - G.S.R. 202(E), 7th March 2011",
+  "applicability": {
+    "applies_to": "retail packages intended for sale to ultimate consumer",
+    "exclusions": [
+      "packages of commodities containing quantity more than 25 kg or 25 litre (except cement/fertilizer bags up to 50kg)",
+      "packaged commodities meant for industrial consumers",
+      "packaged commodities meant for institutional consumers (transport, airways, railways, hotels, hospitals buying directly from manufacturer)"
+    ]
+  },
+
+  "mandatory_declarations": [
+    {
+      "id": "manufacturer_packer_importer",
+      "rule_ref": "Rule 6(1)(a)",
+      "label": "Name and address of manufacturer/packer/importer",
+      "required": true,
+      "notes": "If manufacturer is not the packer, both manufacturer and packer name+address required. For imported packages, importer's name and address required. Complete address = postal address of factory, OR city+state+PIN code.",
+      "special_rule": "If name/address appears WITHOUT qualifying words 'manufactured by' or 'packed by', it is presumed to be the manufacturer (Explanation I, Rule 6)."
+    },
+    {
+      "id": "common_generic_name",
+      "rule_ref": "Rule 6(1)(b)",
+      "label": "Common or generic name of the commodity",
+      "required": true,
+      "notes": "If package contains more than one product, name and quantity of each product required."
+    },
+    {
+      "id": "net_quantity",
+      "rule_ref": "Rule 6(1)(c)",
+      "label": "Net quantity in standard unit of weight/measure/number",
+      "required": true,
+      "notes": "Weight of wrappers/packaging materials must be excluded from net quantity."
+    },
+    {
+      "id": "month_year_of_manufacture",
+      "rule_ref": "Rule 6(1)(d)",
+      "label": "Month and year of manufacture/pre-packing/import",
+      "required": true,
+      "format_options": ["words", "numerals", "both"],
+      "exemptions": [
+        "bidi or incense stick packages",
+        "domestic LPG cylinder (14.2kg or 5kg) marketed by public sector undertaking",
+        "seeds certified under Seeds Act, 1966",
+        "food articles (governed instead by Prevention of Food Adulteration Act, 1954)"
+      ]
+    },
+    {
+      "id": "retail_sale_price",
+      "rule_ref": "Rule 6(1)(e), Rule 2(m)",
+      "label": "Retail Sale Price (MRP)",
+      "required": true,
+      "mandatory_format_patterns": [
+        "Maximum or Max. retail price Rs..../₹.... inclusive of all taxes",
+        "MRP Rs..../₹.... incl. of all taxes"
+      ],
+      "rounding_rule": {
+        "below_50_paise": "round down to preceding rupee",
+        "50_to_95_paise": "round to nearest 50 paise"
+      },
+      "exemptions": [
+        "bidi packages",
+        "domestic LPG cylinder priced under Administrative Price Mechanism",
+        "alcoholic beverages/spirituous liquor (governed by State Excise Laws instead, unless those laws don't cover MRP)"
+      ]
+    },
+    {
+      "id": "dimensions",
+      "rule_ref": "Rule 6(1)(f)",
+      "label": "Dimensions of commodity (only if size is relevant)",
+      "required": "conditional",
+      "notes": "Applies to bed-sheets, fabric, dhoties, sarees, napkins, pillow-covers, towels, table cloths, etc. (Rule 14). If pieces have different dimensions, each must be declared separately."
+    },
+    {
+      "id": "consumer_care_details",
+      "rule_ref": "Rule 6(2)",
+      "label": "Consumer care contact details",
+      "required": true,
+      "fields": ["name", "address", "telephone_number", "email_if_available"]
+    }
+  ],
+
+  "mrp_format_check": {
+    "rule_ref": "Rule 9(1)(b)",
+    "requirement": "Numerals of retail sale price and net quantity must be printed/painted/inscribed in a colour that contrasts conspicuously with the label background",
+    "exceptions": [
+      "information blown/formed/moulded on glass or plastic surface",
+      "handwritten declarations (must instead be clear, unambiguous, legible)"
+    ]
+  },
+
+  "sticker_rules": {
+    "rule_ref": "Rule 6(3)-(4)",
+    "not_permitted": "Individual stickers to alter or make any mandatory declaration",
+    "permitted_exception": "Sticker for reducing MRP (must show revised lower MRP inclusive of all taxes, must not cover the original manufacturer/packer MRP declaration)",
+    "fully_permitted": "Stickers for any declaration NOT required under these rules"
+  },
+
+  "font_size_rules": {
+    "rule_ref": "Rule 7",
+    "unit": "mm",
+    "general_letter_height": {
+      "rule_ref": "Rule 7(3)",
+      "normal_minimum_mm": 1,
+      "blown_formed_moulded_embossed_perforated_minimum_mm": 2,
+      "applies_to": "letters (non-numeral text) in any declaration"
+    },
+    "width_rule": {
+      "rule_ref": "Rule 7(3) proviso",
+      "requirement": "width of letter or numeral shall not be less than one-third of its height",
+      "exceptions": ["numeral '1'", "letter 'i'", "letter 'I'", "letter 'l'"]
+    },
+    "table_1_weight_volume_numerals": {
+      "rule_ref": "Rule 7(2)(i), Table-I",
+      "applies_when": "net_quantity declared in terms of weight or volume",
+      "slabs": [
+        {"serial": 1, "max_qty_g_ml": 200, "min_qty_g_ml": 0, "normal_mm": 1, "blown_moulded_mm": 2},
+        {"serial": 2, "min_qty_g_ml": 200, "max_qty_g_ml": 500, "normal_mm": 2, "blown_moulded_mm": 4},
+        {"serial": 3, "min_qty_g_ml": 500, "max_qty_g_ml": null, "normal_mm": 4, "blown_moulded_mm": 6}
+      ]
+    },
+    "table_2_length_area_number": {
+      "rule_ref": "Rule 7(2)(ii), Table-II",
+      "applies_when": "net_quantity declared in terms of length, area, or number",
+      "basis": "area of principal display panel",
+      "slabs": [
+        {"serial": 1, "max_area_cm2": 100, "min_area_cm2": 0, "normal_mm": 1, "blown_moulded_mm": 2},
+        {"serial": 2, "min_area_cm2": 100, "max_area_cm2": 500, "normal_mm": 2, "blown_moulded_mm": 4},
+        {"serial": 3, "min_area_cm2": 500, "max_area_cm2": 2500, "normal_mm": 4, "blown_moulded_mm": 6},
+        {"serial": 4, "min_area_cm2": 2500, "max_area_cm2": null, "normal_mm": 6, "blown_moulded_mm": 6}
+      ]
+    },
+    "exemption": "Sub-rules (1)-(3) of Rule 7 do not apply if the same info is already required under another law in force."
+  },
+
+  "placement_rules": {
+    "rule_ref": "Rule 8",
+    "principal_display_panel_required": true,
+    "clear_space_around_quantity_declaration": {
+      "above_below": "space at least equal to the height of the numeral in the declaration",
+      "left_right": "space at least twice the height of the numeral in the declaration"
+    },
+    "special_case_soft_drinks": "for returnable soft drink/beverage bottles, MRP may appear on crown cap or bottle, sufficient if shown as 'MRP Rs..../₹......'"
+  },
+
+  "manner_of_declaration": {
+    "rule_ref": "Rule 9",
+    "must_be": ["legible", "prominent"],
+    "handwritten_declarations": "must be clear, unambiguous, legible",
+    "liquid_commodities": "no declaration shall require reading through the liquid commodity",
+    "outer_wrapper_rule": "if package has outer container/wrapper, it must also carry all required declarations, UNLESS wrapper is transparent and inner declarations are easily readable through it",
+    "language": {
+      "permitted": ["Hindi (Devanagari script)", "English"],
+      "additional_languages_allowed": true,
+      "note": "additional languages may be used IN ADDITION to Hindi/English, not as substitute"
+    }
+  },
+
+  "principal_display_panel_definition": {
+    "rule_ref": "Rule 2(h)",
+    "definition": "total surface area of package where required info is given",
+    "grouping_options": [
+      "all information grouped together at one place",
+      "pre-printed info grouped at one place, online/variable info grouped at another place"
+    ],
+    "area_calculation_exclusions": "top, bottom, flange at top/bottom of cans, shoulders and neck of bottles/jars excluded from area calculation",
+    "shape_based_area_rule": {
+      "rectangular": "one side = principal display panel (area of that side)",
+      "cylindrical_or_pipe_shaped": "40% of surface area",
+      "other_shapes": "40% of total surface area"
+    }
+  },
+
+  "standard_package_sizes": {
+    "rule_ref": "Rule 5, Second Schedule",
+    "requirement": "commodities listed in Second Schedule must be packed only in specified standard quantities",
+    "non_standard_size_declaration_required": "'Not a standard pack size under the Legal Metrology (Packaged Commodities) Rules, 2011' OR 'non standard size under the Legal Metrology (Packaged Commodities) Rules, 2011'",
+    "sample_entries": [
+      {"commodity": "Biscuits", "standard_sizes": "25g, 50g, 75g, 100g, 150g, 200g, 250g, 300g, then multiples of 100g up to 1kg"},
+      {"commodity": "Tea", "standard_sizes": "25g, 50g, 100g, 125g, 250g, 500g, 1kg, then multiples of 1kg"},
+      {"commodity": "Coffee", "standard_sizes": "25g, 50g, 100g, 200g, 250g, 500g, 1kg, then multiples of 1kg"},
+      {"commodity": "Cereals and Pulses", "standard_sizes": "100g, 200g, 500g, 1kg, 2kg, 5kg, then multiples of 5kg"},
+      {"commodity": "Salt", "standard_sizes": "below 50g in multiples of 10g; 50g, 100g, 200g, 500g, 750g, 1kg, 2kg, 5kg, then multiples of 5kg"},
+      {"commodity": "Milk Powder", "standard_sizes": "below 50g no restriction; 50g, 100g, 200g, 500g, 1kg, then multiples of 500g"},
+      {"commodity": "Aerated soft drinks/beverages", "standard_sizes": "65ml, 100ml, 125ml, 150ml, 200ml, 250ml, 300ml, 330ml(cans), 500ml, 750ml, 1L, 1.5L, 2L, 3L, 4L, 5L"},
+      {"commodity": "Cement in bags", "standard_sizes": "1kg, 2kg, 5kg, 10kg, 20kg, 25kg, 40kg(white cement only), 50kg"}
+    ]
+  },
+
+  "deceptive_packaging": {
+    "rule_ref": "Rule 23",
+    "definition": "a package designed to deliberately give an exaggerated or misleading impression of the quantity of commodity contained",
+    "valid_justification_for_larger_size": [
+      "necessary for protection of the commodity contained",
+      "necessary to meet requirements of the filling machine used"
+    ],
+    "consequence": "manufacturer/packer required to repack and re-label; failure leads to seizure"
+  },
+
+  "wholesale_package_declarations": {
+    "rule_ref": "Rule 24",
+    "required_fields": [
+      "name and address of manufacturer/importer, or packer if different",
+      "identity of commodity contained",
+      "total number of retail packages OR net quantity in standard units"
+    ],
+    "note": "lighter requirement than retail packages; does not apply if similar declaration already required under another law"
+  },
+
+  "advertisement_rule": {
+    "rule_ref": "Rule 31",
+    "requirement": "any advertisement mentioning MRP must also declare net quantity or number of commodity",
+    "font_size_requirement": "font size of net quantity in the advertisement must equal font size of MRP in the advertisement",
+    "relevance": "applicable if system is extended to check e-commerce/online product listings, not just physical labels"
+  },
+
+  "rule_10_manufacturer_address_detail": {
+    "rule_ref": "Rule 10",
+    "complete_address_definition": "postal address at which factory is situated, OR name of street+city+state, OR PIN code sufficient to identify/locate manufacturer/packer/importer",
+    "small_package_exception": "packages of capacity 5 cubic cm or less: sufficient if a mark/inscription enables consumer to identify manufacturer/packer/importer",
+    "foreign_manufactured_goods_packed_in_india": "must additionally show name and complete address of the packer or importer in India on principal display panel"
+  },
+
+  "quantity_declaration_rules": {
+    "rule_ref": "Rules 11-13",
+    "exclude_wrapper_weight": true,
+    "no_qualifying_words_like_when_packed": "declaration must not be qualified by words 'when packed' etc. UNLESS commodity is one listed in Third Schedule (soaps, lotions, creams) which is subject to environmental variation",
+    "prohibited_vague_terms": ["minimum", "not less than", "average", "about", "approximately"],
+    "prohibited_counting_terms": ["dozen", "score", "gross", "great gross"],
+    "unit_system": "International System of Units (SI) only",
+    "unit_symbol_for_countable_items": ["N", "U"],
+    "unit_selection_rules": {
+      "mass": "for solid, semi-solid, viscous, or solid+liquid mixture commodities",
+      "length": "for commodities sold by linear measure",
+      "area": "for commodities sold by area measure",
+      "volume": "for liquid or cubic-measure commodities",
+      "number": "for commodities sold by count"
+    },
+    "small_unit_thresholds": {
+      "below_1_kg": "unit = gram",
+      "below_1_metre": "unit = centimetre",
+      "below_1_sq_metre": "unit = square decimetre",
+      "below_1_litre": "unit = millilitre"
+    }
+  },
+
+  "penalties": {
+    "rule_ref": "Rule 32",
+    "contravention_of_registration_rules_27_to_31": {"fine_inr": 4000},
+    "contravention_of_other_rules_with_no_specified_penalty": {"fine_inr": 2000}
+  },
+
+  "font_size_check_logic": {
+    "description": "Pseudocode logic for the compliance engine to determine minimum required font size for a scanned product",
+    "steps": [
+      "1. Determine if net_quantity is declared by weight/volume OR by length/area/number",
+      "2. If weight/volume: look up net_quantity value in font_size_rules.table_1_weight_volume_numerals.slabs to get required minimum mm",
+      "3. If length/area/number: calculate/estimate principal display panel area, look up in font_size_rules.table_2_length_area_number.slabs",
+      "4. Measure actual numeral height in mm from image (using reference-object calibration: pixels_per_mm = reference_object_pixel_width / reference_object_known_mm_width; then numeral_height_mm = numeral_height_px / pixels_per_mm)",
+      "5. Compare actual_height_mm >= required_minimum_mm -> PASS else FAIL",
+      "6. Separately check general letter height (non-numeral) >= 1mm (or 2mm if surface is blown/moulded/embossed) per Rule 7(3)",
+      "7. Check width of letters/numerals >= (height / 3), except for '1','i','I','l'"
+    ]
+  }
+}

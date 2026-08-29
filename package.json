@@ -1,0 +1,17 @@
+{
+  "name": "multi-view-package-scanner",
+  "version": "1.0.0",
+  "description": "Multi-View Package Scanning System (Constraint #1) with real-time OpenCV.js, motion tracking, quality gating, and perceptual hash deduplication.",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/server.js",
+    "test": "node test-suite.mjs && node test-compliance-suite.mjs",
+    "test:compliance": "node test-compliance-suite.mjs",
+    "test:scanner": "node test-suite.mjs",
+    "serve": "npx serve -l 3000 .",
+    "serve:py": "python -m http.server 3000"
+  },
+  "keywords": ["computer-vision", "opencv-js", "package-scanner", "phash", "ocr-pipeline"],
+  "author": "",
+  "license": "MIT"
+}
