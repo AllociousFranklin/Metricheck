@@ -1,9 +1,10 @@
-﻿/**
+/**
  * Global Configuration for Multi-View Package Scanning System
  */
 export const CONFIG = {
-  // Target number of distinct views to capture
-  TARGET_VIEWS: 4,
+  // View capture targets (flexible — user can stop anytime with 'Done Scanning')
+  SUGGESTED_VIEWS: 4,          // Suggested target for typical box package
+  MAX_VIEWS: 12,               // Safety upper bound for continuous scanning
 
   // Processing resolution (frame downscaled before sending to CV Worker for high fps)
   PROCESSING_WIDTH: 480,

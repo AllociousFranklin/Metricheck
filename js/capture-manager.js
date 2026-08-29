@@ -27,8 +27,9 @@ export class CaptureManager {
   async evaluateAndCapture(detection, trackerState, qualityReport) {
     if (this.isCompleted || this.isCapturing) return false;
 
-    // Check target count
-    if (this.capturedViews.length >= this.config.TARGET_VIEWS) {
+    // Check safety upper bound (e.g. 12 max views)
+    const maxViews = this.config.MAX_VIEWS || 12;
+    if (this.capturedViews.length >= maxViews) {
       this.isCompleted = true;
       if (this.onCompleteCallback) this.onCompleteCallback(this.capturedViews);
       return false;
@@ -91,7 +92,7 @@ export class CaptureManager {
         return false;
       }
 
-      // 4. Clean New View Accepted!
+      // 5. Clean New View Accepted!
       this.lastCaptureTimestamp = performance.now();
       this.savedHashes.push(candidateHash);
 
@@ -118,18 +119,10 @@ export class CaptureManager {
       };
 
       this.capturedViews.push(viewRecord);
-      console.log(`Captured View #${viewRecord.id}! New views total: ${this.capturedViews.length}`);
+      console.log(`Captured View #${viewRecord.id}! Total distinct views: ${this.capturedViews.length}`);
 
       if (this.onCaptureCallback) {
-        this.onCaptureCallback(viewRecord, this.capturedViews.length, this.config.TARGET_VIEWS);
-      }
-
-      // Check if target views reached
-      if (this.capturedViews.length >= this.config.TARGET_VIEWS) {
-        this.isCompleted = true;
-        if (this.onCompleteCallback) {
-          this.onCompleteCallback(this.capturedViews);
-        }
+        this.onCaptureCallback(viewRecord, this.capturedViews.length, this.config.SUGGESTED_VIEWS || 4);
       }
 
       this.isCapturing = false;
@@ -139,6 +132,17 @@ export class CaptureManager {
       this.isCapturing = false;
       return false;
     }
+  }
+
+  /**
+   * User manually signals scan completion
+   */
+  finish() {
+    this.isCompleted = true;
+    if (this.onCompleteCallback) {
+      this.onCompleteCallback(this.capturedViews);
+    }
+    return this.capturedViews;
   }
 
   onCapture(cb) {

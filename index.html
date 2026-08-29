@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Multi-View Package Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#030712">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Legal Metrology Package Scanner</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,6 +26,23 @@
         <span class="logo-badge">AI SCAN</span>
         <span class="logo-title">PackageView</span>
       </div>
+      
+      <!-- Mode Switcher (Live vs Upload) -->
+      <div class="mode-switch-container">
+        <button id="btn-mode-live" class="mode-switch-btn active" title="Live Camera Scanner">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+          </svg>
+          <span>Live Camera</span>
+        </button>
+        <button id="btn-mode-upload" class="mode-switch-btn" title="Upload Photos">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+          </svg>
+          <span>Upload Photos</span>
+        </button>
+      </div>
+
       <div class="header-controls">
         <button id="btn-torch" class="icon-btn" title="Toggle Flashlight" style="display: none;">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -77,26 +97,30 @@
         </div>
       </div>
 
-      <!-- Thumbnail Strip -->
+      <!-- Thumbnail Strip & Action -->
       <div class="thumbnail-container">
         <div class="thumbnail-strip" id="thumbnail-strip">
           <div class="thumbnail-slot" data-index="1">
             <span class="slot-number">1</span>
-            <span class="slot-label">Front</span>
+            <span class="slot-label">Angle 1</span>
           </div>
           <div class="thumbnail-slot" data-index="2">
             <span class="slot-number">2</span>
-            <span class="slot-label">Side A</span>
+            <span class="slot-label">Angle 2</span>
           </div>
           <div class="thumbnail-slot" data-index="3">
             <span class="slot-number">3</span>
-            <span class="slot-label">Back</span>
+            <span class="slot-label">Angle 3</span>
           </div>
           <div class="thumbnail-slot" data-index="4">
             <span class="slot-number">4</span>
-            <span class="slot-label">Side B</span>
+            <span class="slot-label">Angle 4</span>
           </div>
         </div>
+
+        <button id="btn-live-finish" class="btn-live-finish" title="Finish scanning and run audit on captured views">
+          <span>✓ Done Scanning</span>
+        </button>
       </div>
     </footer>
 
@@ -133,12 +157,62 @@
           </div>
         </div>
 
-        <button id="btn-start" class="btn-primary">
-          <span>Start Scanner</span>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <path d="M5 13l4 4L19 7"/>
-          </svg>
-        </button>
+        <div class="modal-actions">
+          <button id="btn-start" class="btn-primary">
+            <span>Start Live Camera Scan</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+            </svg>
+          </button>
+          <button id="btn-open-upload" class="btn-secondary">
+            <span>📁 Upload Package Images Instead</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Photos Modal / View -->
+    <div id="upload-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card modal-large" style="max-height: 90vh; overflow-y: auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="modal-badge">Batch Upload</div>
+          <button id="btn-close-upload" class="icon-btn" style="width:32px; height:32px;">✕</button>
+        </div>
+
+        <h2>Upload Package Images</h2>
+        <p class="modal-desc">
+          Upload photos covering all available angles/sides of the product (1 or more). When you're ready, run the Legal Metrology audit.
+        </p>
+
+        <!-- Drag & Drop Zone -->
+        <div id="upload-dropzone" class="dropzone-area">
+          <input type="file" id="file-upload-input" multiple accept="image/*" style="display: none;">
+          <div class="dropzone-icon">📤</div>
+          <div class="dropzone-text">
+            <strong>Click to browse or drag & drop package photos</strong>
+            <span>Supports JPG, PNG, WebP (Upload 1, 2, 4, 6 or any number of angles)</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Uploaded Images Gallery -->
+        <div class="upload-slots-grid" id="upload-gallery-grid">
+          <!-- Dynamic uploaded image tiles + add tile will be injected here -->
+        </div>
+
+        <div class="upload-status-bar">
+          <span id="upload-status-count">0 images uploaded (Upload at least 1 image)</span>
+          <button id="btn-clear-all-uploads" class="text-link-btn" style="display:none;">Clear All</button>
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-process-upload" class="btn-primary" disabled>
+            <span>Run Legal Metrology Audit (Constraint #2)</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+          </button>
+          <button id="btn-switch-to-live" class="btn-secondary">Switch to Live Camera</button>
+        </div>
       </div>
     </div>
 

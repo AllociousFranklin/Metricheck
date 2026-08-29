@@ -82,8 +82,9 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 100%);
+  padding: max(14px, env(safe-area-inset-top, 14px)) 16px 10px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
+  gap: 8px;
 }
 
 .logo {
@@ -233,9 +234,9 @@ html, body {
   z-index: 5;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 20px 24px;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.6) 80%, rgba(0, 0, 0, 0) 100%);
+  gap: 10px;
+  padding: 12px 16px max(20px, env(safe-area-inset-bottom, 20px));
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.65) 80%, rgba(0, 0, 0, 0) 100%);
 }
 
 .progress-section {
@@ -729,4 +730,333 @@ html, body {
   max-height: 200px;
   overflow-y: auto;
 }
+
+/* Mode Switcher (Header) */
+.mode-switch-container {
+  display: flex;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 4px;
+}
+
+.mode-switch-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-switch-btn:hover {
+  color: #fff;
+}
+
+.mode-switch-btn.active {
+  background: var(--primary-accent);
+  color: #fff;
+  box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+/* Upload Dropzone Area */
+.dropzone-area {
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropzone-area:hover, .dropzone-area.drag-over {
+  border-color: var(--primary-accent);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.dropzone-icon {
+  font-size: 28px;
+}
+
+.dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dropzone-text strong {
+  font-size: 13px;
+  color: #fff;
+}
+
+.dropzone-text span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 4-Slot Upload Grid */
+.upload-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .upload-slots-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.upload-slot-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.upload-slot-card.has-image {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.slot-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slot-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.slot-subtag {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: #60a5fa;
+}
+
+.slot-card-preview {
+  position: relative;
+  aspect-ratio: 1;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.slot-card-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.slot-placeholder-icon {
+  font-size: 18px;
+  opacity: 0.5;
+}
+
+.slot-placeholder-text {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.slot-btn-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  z-index: 5;
+  transition: all 0.2s ease;
+}
+
+.slot-btn-remove:hover {
+  background: #ef4444;
+  transform: scale(1.1);
+}
+
+.slot-action-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--panel-border);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slot-action-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.upload-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.text-link-btn {
+  background: none;
+  border: none;
+  color: #f87171;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Live Finish / Done Scanning Button */
+.btn-live-finish {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.btn-live-finish:hover {
+  background: linear-gradient(135deg, #047857, #059669);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.thumbnail-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.thumbnail-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  max-width: calc(100% - 150px);
+}
+
+/* Upload Add Tile */
+.upload-add-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 8px;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-add-card:hover {
+  border-color: var(--primary-accent);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.upload-add-icon {
+  font-size: 24px;
+  color: #60a5fa;
+}
+
+.upload-add-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Mobile Touch & Layout Optimizations */
+button, .icon-btn, .mode-switch-btn, .btn-primary, .btn-secondary, .btn-live-finish {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 480px) {
+  .top-bar {
+    padding: max(12px, env(safe-area-inset-top, 12px)) 12px 8px;
+  }
+  
+  .logo-title {
+    font-size: 15px;
+  }
+
+  .mode-switch-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .mode-switch-btn span {
+    display: inline;
+  }
+
+  .thumbnail-strip {
+    max-width: calc(100% - 130px);
+  }
+
+  .btn-live-finish {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .modal-card {
+    padding: 20px 16px;
+    max-height: 85vh;
+  }
+}
+
+
+
 

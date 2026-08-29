@@ -1,12 +1,37 @@
-﻿/**
- * gemini-extractor.js - Multimodal Label Extraction Engine using Gemini
- * Sends 1-4 multi-view package images to Gemini in a single unified API call.
- */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.resolve(__dirname, '..');
+
+// Load .env file if present and GEMINI_API_KEY is not already set
+if (!process.env.GEMINI_API_KEY) {
+  try {
+    const envPath = path.resolve(ROOT_DIR, '.env');
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      envContent.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+          const [key, ...vals] = trimmed.split('=');
+          const val = vals.join('=').trim().replace(/^["'](.*)["']$/, '$1');
+          if (!process.env[key.trim()]) {
+            process.env[key.trim()] = val;
+          }
+        }
+      });
+    }
+  } catch (e) {
+    // Ignore .env read error
+  }
+}
 
 export const EXTRACTION_PROMPT = `You are analyzing package label images for Legal Metrology compliance in India.
-You are given up to 4 images, each showing a different side (front/back/left/right/top/bottom) of the SAME product package.
+You are given one or more images (indexed from 0 upwards), each showing a different side, surface, or angle of the SAME product package.
 
-Extract the following fields by examining ALL images together. For each field, report the exact value found, which image index it was found in (0-3), and a confidence level.
+Extract the following fields by examining ALL images together. For each field, report the exact value found, which image index it was found in (0, 1, 2, ...), and a confidence level.
 
 Return ONLY valid JSON. No explanation, no markdown formatting, no backticks, no markdown fences — just the raw JSON object.
 
@@ -32,7 +57,7 @@ Fields to extract:
 
 For each field, provide:
 - "value": string | number | null
-- "source_image_index": 0 | 1 | 2 | 3 | null
+- "source_image_index": number | null
 - "confidence": "high" | "medium" | "low"
 
 Output JSON structure:
@@ -57,7 +82,7 @@ Output JSON structure:
     "dimensions": {"value": null, "source_image_index": null, "confidence": "low"},
     "country_of_origin": {"value": null, "source_image_index": null, "confidence": "low"}
   },
-  "images_analyzed": 4,
+  "images_analyzed": 1,
   "notes": "string detailing any label observations or legibility notes"
 }
 
@@ -107,7 +132,7 @@ export function parseAndValidateJSON(rawText) {
  */
 export async function extractLabelFields(preparedImages, options = {}) {
   const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
-  const modelName = options.model || 'gemini-1.5-flash';
+  const modelName = options.model || 'gemini-2.5-flash';
 
   // If no API key is set, check if mock mode or error
   if (!apiKey) {

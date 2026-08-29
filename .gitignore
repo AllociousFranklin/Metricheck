@@ -1,0 +1,15 @@
+﻿# Environment and Secrets
+.env
+.env*.local
+
+# Node modules & dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vercel & build artifacts
+.vercel/
+dist/
+.DS_Store
+Thumbs.db

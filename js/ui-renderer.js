@@ -221,26 +221,41 @@ export class UIRenderer {
   }
 
   /**
-   * Updates captured view counter & progress bar
+   * Updates captured view counter & progress bar (flexible N views)
    */
-  updateProgress(currentCount, targetCount) {
-    this.viewCounterText.textContent = `${currentCount} / ${targetCount}`;
-    const pct = Math.min(100, Math.round((currentCount / targetCount) * 100));
-    this.progressBarFill.style.width = `${pct}%`;
+  updateProgress(currentCount, targetCount = 4) {
+    if (currentCount >= targetCount) {
+      this.viewCounterText.textContent = `${currentCount} views (Tap Done when ready)`;
+      this.progressBarFill.style.width = `100%`;
+    } else {
+      this.viewCounterText.textContent = `${currentCount} / ${targetCount} views`;
+      const pct = Math.min(100, Math.round((currentCount / targetCount) * 100));
+      this.progressBarFill.style.width = `${pct}%`;
+    }
   }
 
   /**
-   * Inserts or updates captured thumbnail slot
+   * Inserts or updates captured thumbnail slot, dynamically appending new slots if needed.
    */
   setThumbnail(viewIndex, canvasBlobUrl) {
-    const slot = this.thumbnailStrip.querySelector(`.thumbnail-slot[data-index="${viewIndex}"]`);
-    if (slot) {
-      slot.classList.add('captured');
-      slot.innerHTML = `
-        <img src="${canvasBlobUrl}" alt="View ${viewIndex}" />
-        <span class="slot-number" style="position:absolute; bottom:4px; right:6px; font-size:11px; z-index:2; text-shadow:0 1px 4px #000; color:#fff;">✓ ${viewIndex}</span>
-      `;
+    let slot = this.thumbnailStrip.querySelector(`.thumbnail-slot[data-index="${viewIndex}"]`);
+    
+    // If slot doesn't exist yet (e.g. view #5, #6, etc.), dynamically append it!
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.className = 'thumbnail-slot';
+      slot.setAttribute('data-index', String(viewIndex));
+      this.thumbnailStrip.appendChild(slot);
     }
+
+    slot.classList.add('captured');
+    slot.innerHTML = `
+      <img src="${canvasBlobUrl}" alt="View ${viewIndex}" />
+      <span class="slot-number" style="position:absolute; bottom:4px; right:6px; font-size:11px; z-index:2; text-shadow:0 1px 4px #000; color:#fff;">✓ ${viewIndex}</span>
+    `;
+
+    // Auto scroll thumbnail strip to latest item
+    this.thumbnailStrip.scrollLeft = this.thumbnailStrip.scrollWidth;
   }
 
   /**
@@ -250,8 +265,18 @@ export class UIRenderer {
     const allSlots = this.thumbnailStrip.querySelectorAll('.thumbnail-slot');
     allSlots.forEach(s => s.classList.remove('active-pending'));
 
-    const nextSlot = this.thumbnailStrip.querySelector(`.thumbnail-slot[data-index="${viewIndex}"]`);
-    if (nextSlot && !nextSlot.classList.contains('captured')) {
+    let nextSlot = this.thumbnailStrip.querySelector(`.thumbnail-slot[data-index="${viewIndex}"]`);
+    if (!nextSlot) {
+      // Create pending slot placeholder
+      nextSlot = document.createElement('div');
+      nextSlot.className = 'thumbnail-slot active-pending';
+      nextSlot.setAttribute('data-index', String(viewIndex));
+      nextSlot.innerHTML = `
+        <span class="slot-number">${viewIndex}</span>
+        <span class="slot-label">Angle ${viewIndex}</span>
+      `;
+      this.thumbnailStrip.appendChild(nextSlot);
+    } else if (!nextSlot.classList.contains('captured')) {
       nextSlot.classList.add('active-pending');
     }
   }

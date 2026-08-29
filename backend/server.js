@@ -1,4 +1,4 @@
-﻿/**
+/**
  * server.js - Integrated HTTP API & Static Web Server for Package Scanner & Compliance Engine
  * Zero-dependency native Node.js HTTP server. Serves frontend & handles /api/audit endpoints.
  */
@@ -12,6 +12,24 @@ import { processFullScan } from './scan-orchestrator.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
+
+// Load .env file if present
+try {
+  const envPath = path.resolve(ROOT_DIR, '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+        const [key, ...vals] = trimmed.split('=');
+        const val = vals.join('=').trim().replace(/^["'](.*)["']$/, '$1');
+        process.env[key.trim()] = val;
+      }
+    });
+  }
+} catch (e) {
+  console.warn('Could not read .env file:', e.message);
+}
 
 const PORT = process.env.PORT || 3000;
 
@@ -69,7 +87,7 @@ const server = http.createServer(async (req, res) => {
 
         const report = await processFullScan(images, {
           apiKey: payload.apiKey || process.env.GEMINI_API_KEY,
-          model: payload.model || 'gemini-1.5-flash',
+          model: payload.model || 'gemini-2.5-flash',
           allowMock: true // allows mock fallback if GEMINI_API_KEY is not configured
         });
 
