@@ -1,22 +1,7 @@
-﻿{
-  "version": 2,
-  "framework": null,
-  "cleanUrls": true,
-  "trailingSlash": false,
+{
   "functions": {
     "api/audit.js": {
-      "maxDuration": 60,
-      "memory": 1024
+      "maxDuration": 60
     }
-  },
-  "routes": [
-    {
-      "src": "/api/audit",
-      "dest": "/api/audit.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
+  }
 }
