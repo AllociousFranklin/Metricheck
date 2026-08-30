@@ -76,11 +76,11 @@ export const ReportsPage: React.FC = () => {
                 <thead className="text-xs text-neutral-600 bg-neutral-25 uppercase border-b border-neutral-200">
                   <tr>
                     <th className="px-4 py-3">Report ID</th>
-                    <th className="px-4 py-3">Inspection ID</th>
+                    <th className="px-4 py-3 hidden md:table-cell">Inspection ID</th>
                     <th className="px-4 py-3">Product</th>
                     <th className="px-4 py-3">Result</th>
                     <th className="px-4 py-3">Score</th>
-                    <th className="px-4 py-3">Generated Date</th>
+                    <th className="px-4 py-3 hidden sm:table-cell">Generated Date</th>
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
@@ -93,7 +93,7 @@ export const ReportsPage: React.FC = () => {
                       <td className="px-4 py-4 font-medium text-neutral-900">
                         {report.id}
                       </td>
-                      <td className="px-4 py-4 font-medium text-primary hover:underline cursor-pointer" onClick={() => navigate(`/inspections/${report.inspectionId}`)}>
+                      <td className="px-4 py-4 font-medium text-primary hover:underline cursor-pointer hidden md:table-cell" onClick={() => navigate(`/inspections/${report.inspectionId}`)}>
                         {report.inspectionId}
                       </td>
                       <td className="px-4 py-4 text-neutral-900">{report.productName}</td>
@@ -109,7 +109,7 @@ export const ReportsPage: React.FC = () => {
                           {report.score}%
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-neutral-600">
+                      <td className="px-4 py-4 text-neutral-600 hidden sm:table-cell">
                         {new Date(report.generatedDate).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-4 text-right">

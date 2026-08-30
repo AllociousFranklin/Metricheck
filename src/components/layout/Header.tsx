@@ -46,13 +46,20 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       {/* Desktop Logo (Invisible on desktop since sidebar covers left side, but good for flex spacing) */}
       <div className="hidden lg:block flex-1" />
 
-      <div className="flex items-center gap-3 sm:gap-4 ml-auto">
+      <div className="flex items-center gap-2 sm:gap-4 ml-auto">
         <Link
           to="/inspections/new"
-          className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          className="flex sm:hidden items-center justify-center w-9 h-9 bg-primary hover:bg-primary-600 text-white rounded-lg transition-colors shadow-sm"
+          aria-label="New Inspection"
+        >
+          <Plus className="w-5 h-5" />
+        </Link>
+        <Link
+          to="/inspections/new"
+          className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
-          New Inspection
+          <span>New Inspection</span>
         </Link>
 
         <div className="relative">

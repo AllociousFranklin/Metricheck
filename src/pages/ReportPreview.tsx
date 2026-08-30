@@ -71,34 +71,34 @@ export const ReportPreviewPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-transparent pb-12">
       {/* Action Bar - Hidden on Print */}
-      <div className="bg-white border-b border-neutral-200 p-4 sticky top-0 z-10 print:hidden flex justify-between items-center shadow-sm">
-        <Button variant="ghost" onClick={() => navigate('/reports')}>
+      <div className="bg-white border-b border-neutral-200 p-4 sticky top-0 z-10 print:hidden flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 shadow-sm">
+        <Button variant="ghost" onClick={() => navigate('/reports')} className="justify-center sm:justify-start">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportJson}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={handleExportJson} className="justify-center">
             <FileEdit className="w-4 h-4 mr-2" /> Export JSON / Editable
           </Button>
-          <Button variant="primary" onClick={handlePrint}>
+          <Button variant="primary" onClick={handlePrint} className="justify-center">
             <Printer className="w-4 h-4 mr-2" /> Print / Save PDF
           </Button>
         </div>
       </div>
 
       {/* Report Container */}
-      <div className="max-w-4xl mx-auto mt-8 bg-white p-10 shadow-lg print:shadow-none print:mt-0 print:p-0">
+      <div className="max-w-4xl mx-auto mt-4 sm:mt-8 bg-white p-5 sm:p-10 rounded-2xl shadow-lg print:shadow-none print:mt-0 print:p-0">
         
         {/* Report Header */}
         <div className="text-center border-b-2 border-primary pb-6 mb-8">
           <Shield className="w-12 h-12 mx-auto text-primary mb-4" />
-          <h1 className="text-2xl font-bold text-primary uppercase tracking-wider mb-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-primary uppercase tracking-wider mb-2">
             METRICHECK Compliance Assessment Report
           </h1>
-          <p className="text-neutral-600">Generated on {new Date(report.generatedAt || report.generatedDate || Date.now()).toLocaleString()}</p>
+          <p className="text-xs sm:text-sm text-neutral-600">Generated on {new Date(report.generatedAt || report.generatedDate || Date.now()).toLocaleString()}</p>
         </div>
 
         {/* Info Grid */}
-        <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-8 text-sm">
           <div>
             <h2 className="font-bold text-neutral-900 border-b border-neutral-200 pb-2 mb-3 uppercase tracking-wide">Inspection Details</h2>
             <div className="space-y-2">

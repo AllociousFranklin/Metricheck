@@ -9,6 +9,7 @@ import { runLegalMetrologyAudit, AuditResponse, ComplianceCheck, ExtractedData }
 import { getInspectionById, addInspection } from '@/mocks/inspections';
 import { useToastStore } from '@/stores/toastStore';
 import { PackageAutoScanner, CapturedView } from '@/components/scanner/PackageAutoScanner';
+import { AuditLoadingScreen } from '@/components/scanner/AuditLoadingScreen';
 import { cn } from '@/utils/cn';
 
 export const NewInspectionPage: React.FC = () => {
@@ -177,13 +178,16 @@ export const NewInspectionPage: React.FC = () => {
 
   const renderField = (key: keyof ExtractedData, label: string) => {
     return (
-      <div className="mb-3">
-        <label className="block text-xs font-semibold text-neutral-500 mb-1 uppercase tracking-wider">{label}</label>
-        <Input 
+      <div className="space-y-1 mb-3">
+        <label className="text-xs font-semibold text-neutral-600 uppercase tracking-wider block">
+          {label}
+        </label>
+        <Input
+          type="text"
           value={editableExtracted[key] || ''}
           onChange={(e) => handleFieldChange(key, e.target.value)}
-          placeholder={`Not detected on package`}
-          className="w-full text-sm font-medium"
+          placeholder={`Enter or correct ${label.toLowerCase()}...`}
+          className="text-sm bg-neutral-50/50 border-neutral-200 focus:bg-white"
         />
       </div>
     );
@@ -216,7 +220,7 @@ export const NewInspectionPage: React.FC = () => {
               type="button"
               onClick={() => setActiveTab('camera')}
               className={cn(
-                'flex-1 py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all',
+                'flex-1 py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer',
                 activeTab === 'camera'
                   ? 'bg-white text-neutral-900 shadow-sm'
                   : 'text-neutral-600 hover:text-neutral-900'
@@ -229,7 +233,7 @@ export const NewInspectionPage: React.FC = () => {
               type="button"
               onClick={() => setActiveTab('upload')}
               className={cn(
-                'flex-1 py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all',
+                'flex-1 py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer',
                 activeTab === 'upload'
                   ? 'bg-white text-neutral-900 shadow-sm'
                   : 'text-neutral-600 hover:text-neutral-900'
@@ -317,7 +321,7 @@ export const NewInspectionPage: React.FC = () => {
                               e.stopPropagation();
                               removeImage(idx);
                             }}
-                            className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-red-600 text-white rounded-full transition-all"
+                            className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-red-600 text-white rounded-full transition-all cursor-pointer"
                             aria-label="Remove image"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -369,21 +373,7 @@ export const NewInspectionPage: React.FC = () => {
       )}
 
       {step === 'processing' && (
-        <Card className="bg-white shadow-sm border-neutral-100 text-center py-16">
-          <CardContent className="flex flex-col items-center">
-            <div className="relative w-20 h-20 mb-6">
-              <div className="absolute inset-0 rounded-full border-4 border-neutral-100"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
-              <Scan className="absolute inset-0 m-auto w-8 h-8 text-blue-600 animate-pulse" />
-            </div>
-            <h3 className="text-xl font-bold text-neutral-900 mb-2">
-              Executing Legal Metrology Compliance Audit
-            </h3>
-            <p className="text-sm text-neutral-500 max-w-md px-4">
-              Running Gemini Multimodal OCR extraction across captured package views & deterministic statutory rule verification...
-            </p>
-          </CardContent>
-        </Card>
+        <AuditLoadingScreen images={capturedImages} />
       )}
 
       {step === 'results' && auditData && (

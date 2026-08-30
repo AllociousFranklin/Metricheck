@@ -31,7 +31,7 @@ export const CONFIG = {
   HASH_SIMILARITY_THRESHOLD: 10, // Hamming distance (0-64): <= 10 means duplicate/same view
 
   // Capture behavior
-  CAPTURE_COOLDOWN_MS: 1200,   // Minimum ms cooldown between captures to allow user rotation
+  CAPTURE_COOLDOWN_MS: 2400,   // Minimum ms cooldown between captures to allow user rotation (2.4s)
 
   // Package detection (OpenCV contour parameters)
   CANNY_LOW: 45,

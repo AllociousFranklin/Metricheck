@@ -20,6 +20,8 @@ import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { getDashboardStats } from '@/services/dashboardApi';
 
+import { mockInspections } from '@/mocks/inspections';
+
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   
@@ -51,10 +53,19 @@ export const DashboardPage: React.FC = () => {
     );
   }
 
-  const stats = (data as any)?.stats || { total: 0, compliant: 0, nonCompliant: 0, needsReview: 0 };
-  const trendData = (data as any)?.trends || [];
-  const violationsData = (data as any)?.violationsByCategory || [];
-  const recentInspections = (data as any)?.recentInspections || [];
+  const totalInspections = data?.totalInspections ?? 0;
+  const compliant = data?.compliant ?? 0;
+  const nonCompliant = data?.nonCompliant ?? 0;
+  const needsReview = data?.needsReview ?? 0;
+  const trendData = data?.complianceTrend || [];
+  const violationsData = data?.violationCategories || [];
+  const recentInspections = (data as any)?.recentInspections || mockInspections.slice(0, 5).map(i => ({
+    id: i.id,
+    productName: i.product.name,
+    status: i.status,
+    score: i.complianceScore,
+    date: i.createdAt
+  }));
   const reviewQueue = data?.reviewQueue || [];
   const recentActivity = data?.recentActivity || [];
 
@@ -63,14 +74,14 @@ export const DashboardPage: React.FC = () => {
       <PageHeader title="Dashboard" subtitle="Inspection & Compliance Overview" />
       
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white border-neutral-100 shadow-sm">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-neutral-600 mb-1">Total Inspections</p>
-              <h3 className="text-h2 font-bold text-neutral-900">{stats.total}</h3>
+              <h3 className="text-2xl sm:text-3xl font-bold text-neutral-900">{totalInspections}</h3>
             </div>
-            <div className="p-3 bg-neutral-25 rounded-full">
+            <div className="p-3 bg-neutral-100 rounded-full">
               <ClipboardList className="w-6 h-6 text-primary" />
             </div>
           </CardContent>
@@ -80,9 +91,9 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-success mb-1">Compliant</p>
-              <h3 className="text-h2 font-bold text-success">{stats.compliant}</h3>
+              <h3 className="text-2xl sm:text-3xl font-bold text-success">{compliant}</h3>
             </div>
-            <div className="p-3 bg-white rounded-full">
+            <div className="p-3 bg-emerald-50 rounded-full">
               <CheckCircle className="w-6 h-6 text-success" />
             </div>
           </CardContent>
@@ -92,9 +103,9 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-error mb-1">Potentially Non-Compliant</p>
-              <h3 className="text-h2 font-bold text-error">{stats.nonCompliant}</h3>
+              <h3 className="text-2xl sm:text-3xl font-bold text-error">{nonCompliant}</h3>
             </div>
-            <div className="p-3 bg-white rounded-full">
+            <div className="p-3 bg-red-50 rounded-full">
               <XCircle className="w-6 h-6 text-error" />
             </div>
           </CardContent>
@@ -104,9 +115,9 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-warning mb-1">Needs Review</p>
-              <h3 className="text-h2 font-bold text-warning">{stats.needsReview}</h3>
+              <h3 className="text-2xl sm:text-3xl font-bold text-warning">{needsReview}</h3>
             </div>
-            <div className="p-3 bg-white rounded-full">
+            <div className="p-3 bg-amber-50 rounded-full">
               <AlertTriangle className="w-6 h-6 text-warning" />
             </div>
           </CardContent>
@@ -118,14 +129,14 @@ export const DashboardPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-white border-neutral-100 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-h3 text-neutral-900">Compliance Trend</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold text-neutral-900">Compliance Trend</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80">
+              <div className="h-72 sm:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trendData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                    <XAxis dataKey="month" stroke="#6B7280" />
+                    <XAxis dataKey="date" stroke="#6B7280" />
                     <YAxis stroke="#6B7280" />
                     <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB' }} />
                     <Legend />

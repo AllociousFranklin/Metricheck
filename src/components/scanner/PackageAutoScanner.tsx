@@ -227,7 +227,16 @@ export const PackageAutoScanner: React.FC<PackageAutoScannerProps> = ({
         const trackerState = tracker.update(detection.bbox, procW, procH);
         const qualityReport = QualityScorer.evaluate(detection, trackerState, CONFIG);
 
-        if (qualityReport) {
+        const now = performance.now();
+        const timeSinceLastCapture = now - (captureManager.lastCaptureTimestamp || 0);
+        const isCoolingDown = timeSinceLastCapture < (CONFIG.CAPTURE_COOLDOWN_MS || 2400);
+
+        if (isCoolingDown && captureManager.capturedViews.length > 0) {
+          const remainingSec = Math.max(0.1, (CONFIG.CAPTURE_COOLDOWN_MS - timeSinceLastCapture) / 1000).toFixed(1);
+          setStatusPrimary('Captured! Rotate to next face...');
+          setStatusSecondary(`Ready in ${remainingSec}s`);
+          setBadgeState('moving');
+        } else if (qualityReport) {
           setStatusPrimary(qualityReport.feedbackPrimary || 'Scanning...');
           setStatusSecondary(qualityReport.feedbackSecondary || '');
           if (qualityReport.isAcceptable) setBadgeState('stable');

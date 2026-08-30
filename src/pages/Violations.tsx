@@ -56,7 +56,7 @@ export const ViolationsPage: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <div className="flex items-center gap-2 border border-neutral-200 rounded-md bg-white">
                 <AlertTriangle className="w-4 h-4 text-neutral-500 ml-3" />
                 <select

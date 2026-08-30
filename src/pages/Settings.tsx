@@ -21,14 +21,14 @@ export const SettingsPage: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-start gap-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
               <span className="text-2xl font-bold text-primary">
                 {user?.name.charAt(0) || 'U'}
               </span>
             </div>
-            <div className="space-y-4 flex-grow">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4 flex-grow w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">Full Name</label>
                   <p className="text-neutral-900 font-medium">{user?.name || 'Unknown User'}</p>
@@ -39,7 +39,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">Role</label>
-                  <span className="inline-block px-2 py-1 bg-white text-neutral-700 text-xs font-bold rounded uppercase">
+                  <span className="inline-block px-2 py-1 bg-white text-neutral-700 text-xs font-bold rounded uppercase border border-neutral-200">
                     {user?.role || 'USER'}
                   </span>
                 </div>
@@ -55,24 +55,24 @@ export const SettingsPage: React.FC = () => {
 
       <Card className="bg-white border-neutral-100 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-h3 flex items-center">
+          <CardTitle className="text-base sm:text-lg font-bold flex items-center">
             <Shield className="w-5 h-5 mr-2 text-primary" />
             System & Rule Set Information
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex justify-between items-center py-2 border-b border-neutral-100">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 border-b border-neutral-100 gap-2">
               <div>
                 <p className="font-medium text-neutral-900">Current Rule Set</p>
                 <p className="text-sm text-neutral-500">The active set of rules used for automated compliance checks.</p>
               </div>
-              <div className="text-right">
-                <span className="inline-block px-2 py-1 bg-white border-l-4 border-l-success text-success text-xs font-bold rounded mb-1">ACTIVE</span>
+              <div className="text-left sm:text-right">
+                <span className="inline-block px-2 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded mb-1">ACTIVE</span>
                 <p className="text-sm font-medium">v{APP_CONFIG.ruleSetVersion}</p>
               </div>
             </div>
-            <div className="flex justify-between items-center py-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 gap-2">
               <div>
                 <p className="font-medium text-neutral-900">Last System Update</p>
                 <p className="text-sm text-neutral-500">Platform and vision model updates.</p>

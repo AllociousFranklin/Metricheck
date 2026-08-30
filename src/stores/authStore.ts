@@ -10,6 +10,7 @@ interface AuthStore {
   isLoading: boolean;
   error: string | null;
   login: () => Promise<void>;
+  loginAsDemo: (role?: 'INSPECTOR' | 'ADMIN') => Promise<void>;
   logout: () => void;
   initialize: () => void;
   clearError: () => void;
@@ -31,6 +32,26 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({
         isLoading: false,
         error: err instanceof Error ? err.message : 'Login failed',
+      });
+      throw err;
+    }
+  },
+
+  loginAsDemo: async (role = 'INSPECTOR') => {
+    set({ isLoading: true, error: null });
+    try {
+      const user = await authApi.loginAsDemo(role);
+      set({
+        user,
+        token: 'demo-token-123',
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : 'Demo login failed',
       });
       throw err;
     }
@@ -60,7 +81,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     });
 
     // Listen for auth changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         const user = await authApi.getCurrentUser();
         set({
