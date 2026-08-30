@@ -1,7 +1,20 @@
 import type { Inspection, CreateInspectionRequest, AnalysisResult, Declaration } from '@/types';
-import { delay, USE_MOCKS } from './api';
-import { mockInspections, getInspectionById, addInspection } from '@/mocks/inspections';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+
+// Helper to convert Data URL to Blob for Supabase Storage
+function dataURLtoBlob(dataurl: string) {
+    const arr = dataurl.split(',');
+    const match = arr[0].match(/:(.*?);/);
+    const mime = match ? match[1] : 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], {type:mime});
+}
 
 // Backend Integration Types
 export interface ComplianceCheck {
@@ -312,9 +325,105 @@ export async function runLegalMetrologyAudit(images: (File | Blob | string)[]): 
     }))
   };
 
-  addInspection(newInspection);
+  // Persist to Supabase
+  await persistInspectionToSupabase(newInspection);
   return auditRes;
 }
+
+async function persistInspectionToSupabase(inspection: Inspection) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error('Not authenticated');
+
+  // Insert or Upsert Product
+  let productId = inspection.product.id;
+  const { data: existingProduct } = await supabase
+    .from('products')
+    .select('id')
+    .eq('name', inspection.product.name)
+    .single();
+
+  if (existingProduct) {
+    productId = existingProduct.id;
+  } else {
+    const { data: p } = await supabase.from('products').insert({
+      user_id: userId,
+      name: inspection.product.name,
+      category: inspection.product.category,
+      manufacturer: inspection.product.manufacturer,
+      last_compliance_score: inspection.product.lastComplianceScore,
+      last_status: inspection.product.lastStatus
+    }).select().single();
+    if (p) productId = p.id;
+  }
+
+  // Insert Inspection
+  const { data: savedInspection, error: inspError } = await supabase.from('inspections').insert({
+    id: inspection.id,
+    user_id: userId,
+    product_id: productId,
+    status: inspection.status,
+    compliance_score: inspection.complianceScore,
+    confidence: inspection.confidence,
+    product_name: inspection.product.name,
+    product_manufacturer: inspection.product.manufacturer,
+  }).select().single();
+
+  if (inspError) throw inspError;
+
+  // Insert Images
+  for (const img of inspection.images) {
+    const blob = dataURLtoBlob(img.url);
+    const storagePath = `${userId}/${inspection.id}/${img.id}.jpg`;
+    
+    await supabase.storage.from('inspection-images').upload(storagePath, blob, {
+      contentType: 'image/jpeg'
+    });
+
+    const { data: publicUrlData } = supabase.storage.from('inspection-images').getPublicUrl(storagePath);
+    
+    await supabase.from('inspection_images').insert({
+      inspection_id: inspection.id,
+      user_id: userId,
+      storage_path: storagePath,
+      category: img.category,
+      file_name: img.fileName,
+      file_size: img.fileSize
+    });
+  }
+
+  // Insert Declarations
+  if (inspection.declarations.length > 0) {
+    const decs = inspection.declarations.map(d => ({
+      id: d.id,
+      inspection_id: inspection.id,
+      user_id: userId,
+      type: d.type,
+      label: d.label,
+      extracted_text: d.extractedText,
+      status: d.status,
+      confidence: d.confidence
+    }));
+    await supabase.from('declarations').insert(decs);
+  }
+
+  // Insert Violations
+  if (inspection.violations && inspection.violations.length > 0) {
+    const viols = inspection.violations.map(v => ({
+      id: v.id,
+      inspection_id: inspection.id,
+      user_id: userId,
+      type: v.type,
+      severity: v.severity,
+      field: v.field,
+      description: v.description,
+      confidence: v.confidence,
+      review_status: v.reviewStatus
+    }));
+    await supabase.from('violations').insert(viols);
+  }
+}
+
 
 export async function getInspections(filters?: {
   status?: string;
@@ -322,84 +431,124 @@ export async function getInspections(filters?: {
   dateFrom?: string;
   dateTo?: string;
 }): Promise<Inspection[]> {
-  if (USE_MOCKS) {
-    await delay();
-    let results = [...mockInspections];
-    if (filters?.status) {
-      results = results.filter(i => i.status === filters.status);
-    }
-    if (filters?.search) {
-      const q = filters.search.toLowerCase();
-      results = results.filter(i =>
-        i.id.toLowerCase().includes(q) ||
-        i.product.name.toLowerCase().includes(q) ||
-        i.product.manufacturer.toLowerCase().includes(q)
-      );
-    }
-    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  let query = supabase
+    .from('inspections')
+    .select('*, products(*)');
+
+  if (filters?.status) {
+    query = query.eq('status', filters.status);
   }
-  throw new Error('Real API not configured');
+  if (filters?.search) {
+    const q = filters.search;
+    query = query.or(`id.ilike.%${q}%,product_name.ilike.%${q}%,product_manufacturer.ilike.%${q}%`);
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).map((i: any) => ({
+    id: i.id,
+    status: i.status,
+    complianceScore: i.compliance_score,
+    confidence: i.confidence,
+    createdAt: i.created_at,
+    updatedAt: i.updated_at,
+    inspectorId: i.user_id,
+    inspectorName: 'Inspector',
+    product: {
+      id: i.products?.id || '',
+      name: i.products?.name || i.product_name,
+      category: i.products?.category || '',
+      manufacturer: i.products?.manufacturer || i.product_manufacturer,
+      inspectionCount: i.products?.inspection_count || 1,
+    },
+    images: [],
+    declarations: [],
+    violations: [],
+    timeline: [],
+  }));
 }
 
 export async function getInspection(id: string): Promise<Inspection> {
-  if (USE_MOCKS) {
-    await delay();
-    const inspection = getInspectionById(id);
-    if (!inspection) throw new Error(`Inspection ${id} not found`);
-    return inspection;
-  }
-  throw new Error('Real API not configured');
+  const { data: i, error } = await supabase
+    .from('inspections')
+    .select(`
+      *,
+      products(*),
+      inspection_images(*),
+      declarations(*),
+      violations(*)
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error || !i) throw new Error(`Inspection ${id} not found`);
+
+  return {
+    id: i.id,
+    status: i.status,
+    complianceScore: i.compliance_score,
+    confidence: i.confidence,
+    createdAt: i.created_at,
+    updatedAt: i.updated_at,
+    inspectorId: i.user_id,
+    inspectorName: 'Inspector',
+    product: {
+      id: i.products?.id || '',
+      name: i.products?.name || i.product_name,
+      category: i.products?.category || '',
+      manufacturer: i.products?.manufacturer || i.product_manufacturer,
+      inspectionCount: i.products?.inspection_count || 1,
+    },
+    images: (i.inspection_images || []).map((img: any) => ({
+      id: img.id,
+      url: supabase.storage.from('inspection-images').getPublicUrl(img.storage_path).data.publicUrl,
+      category: img.category,
+      fileName: img.file_name,
+      fileSize: img.file_size
+    })),
+    declarations: (i.declarations || []).map((d: any) => ({
+      id: d.id,
+      type: d.type,
+      label: d.label,
+      extractedText: d.extracted_text,
+      status: d.status,
+      confidence: d.confidence,
+    })),
+    violations: (i.violations || []).map((v: any) => ({
+      id: v.id,
+      inspectionId: v.inspection_id,
+      type: v.type,
+      severity: v.severity,
+      field: v.field,
+      description: v.description,
+      confidence: v.confidence,
+      reviewStatus: v.review_status,
+      reviewNote: v.review_note
+    })),
+    timeline: []
+  };
 }
 
 export async function createInspection(request: CreateInspectionRequest): Promise<Inspection> {
-  if (USE_MOCKS) {
-    await delay(500);
-    // Return the first mock inspection as a new one
-    const template = mockInspections[0];
-    const newInspection: Inspection = {
-      ...template,
-      id: `LM-2026-${String(mockInspections.length + 1).padStart(5, '0')}`,
-      status: 'DRAFT',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      complianceScore: 0,
-      confidence: 0,
-      declarations: [],
-      violations: [],
-      productInformation: request.productInformation,
-      productListing: request.productListing,
-      timeline: [{
-        id: 'tl-new-1',
-        type: 'created',
-        label: 'Inspection Created',
-        timestamp: new Date().toISOString(),
-        description: 'New inspection initiated',
-      }],
-    };
-    return newInspection;
-  }
-  throw new Error('Real API not configured');
+  throw new Error('Please use runLegalMetrologyAudit instead to initiate an inspection');
 }
 
 export async function analyzeInspection(id: string): Promise<AnalysisResult> {
-  if (USE_MOCKS) {
-    // This is called after the analysis animation completes
-    await delay(300);
-    const inspection = getInspectionById(id);
-    if (!inspection) throw new Error(`Inspection ${id} not found`);
-    return {
-      declarations: inspection.declarations,
-      violations: inspection.violations,
-      complianceScore: inspection.complianceScore,
-      overallConfidence: inspection.confidence,
-      ruleSetVersion: '2026.1',
-      totalChecks: 18,
-      passedChecks: inspection.declarations.filter(d => d.status === 'PASS').length * 2 + 2,
-      failedChecks: inspection.violations.length,
-      reviewChecks: inspection.declarations.filter(d => d.status === 'REVIEW').length,
-    };
-  }
-  throw new Error('Real API not configured');
+  const inspection = await getInspection(id);
+  return {
+    declarations: inspection.declarations,
+    violations: inspection.violations,
+    complianceScore: inspection.complianceScore,
+    overallConfidence: inspection.confidence,
+    ruleSetVersion: '2026.1',
+    totalChecks: 18,
+    passedChecks: inspection.declarations.filter(d => d.status === 'PASS').length * 2 + 2,
+    failedChecks: inspection.violations.length,
+    reviewChecks: inspection.declarations.filter(d => d.status === 'REVIEW').length,
+  };
 }
 
 export async function updateViolationReview(
@@ -408,24 +557,20 @@ export async function updateViolationReview(
   reviewStatus: string,
   reviewNote?: string
 ): Promise<void> {
-  if (USE_MOCKS) {
-    await delay(400);
-    const inspection = mockInspections.find(i => i.id === inspectionId);
-    if (inspection) {
-      const violation = (inspection.violations || []).find(v => v.id === violationId);
-      if (violation) {
-        violation.reviewStatus = reviewStatus as any;
-        violation.reviewNote = reviewNote;
-      } else if (inspection.analysisResult && inspection.analysisResult.violations) {
-        const arViolation = inspection.analysisResult.violations.find(v => v.id === violationId);
-        if (arViolation) {
-          arViolation.reviewStatus = reviewStatus as any;
-          arViolation.reviewNote = reviewNote;
-        }
-      }
-    }
-    return;
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  const { error } = await supabase
+    .from('violations')
+    .update({
+      review_status: reviewStatus,
+      review_note: reviewNote,
+      reviewed_by: session?.user?.id,
+      reviewed_at: new Date().toISOString()
+    })
+    .eq('id', violationId);
+
+  if (error) {
+    throw error;
   }
-  throw new Error('Real API not configured');
 }
 

@@ -1,6 +1,5 @@
 import type { Violation } from '@/types';
-import { delay, USE_MOCKS } from './api';
-import { mockViolations, getViolationById as getMockViolation } from '@/mocks/violations';
+import { supabase } from '@/lib/supabase';
 
 export async function getViolations(filters?: {
   search?: string;
@@ -8,39 +7,74 @@ export async function getViolations(filters?: {
   type?: string;
   status?: string;
 }): Promise<Violation[]> {
-  if (USE_MOCKS) {
-    await delay();
-    let results = [...mockViolations];
-    if (filters?.severity) {
-      results = results.filter(v => v.severity === filters.severity);
-    }
-    if (filters?.type) {
-      results = results.filter(v => v.type === filters.type);
-    }
-    if (filters?.status) {
-      results = results.filter(v => v.reviewStatus === filters.status);
-    }
-    if (filters?.search) {
-      const q = filters.search.toLowerCase();
-      results = results.filter(v =>
-        v.field.toLowerCase().includes(q) ||
-        v.description.toLowerCase().includes(q) ||
-        (v.productName || '').toLowerCase().includes(q)
-      );
-    }
-    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  let query = supabase.from('violations').select('*, inspections!inner(product_name)');
+
+  if (filters?.severity) {
+    query = query.eq('severity', filters.severity);
   }
-  throw new Error('Real API not configured');
+  if (filters?.type) {
+    query = query.eq('type', filters.type);
+  }
+  if (filters?.status) {
+    query = query.eq('review_status', filters.status);
+  }
+  if (filters?.search) {
+    const q = filters.search;
+    query = query.or(`field.ilike.%${q}%,description.ilike.%${q}%,inspections.product_name.ilike.%${q}%`);
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) {
+    throw error;
+  }
+
+  return (data || []).map((v: any) => ({
+    id: v.id,
+    inspectionId: v.inspection_id,
+    type: v.type,
+    severity: v.severity,
+    field: v.field,
+    description: v.description,
+    confidence: v.confidence,
+    ruleReference: v.rule_reference_json,
+    reviewStatus: v.review_status,
+    reviewedBy: v.reviewed_by,
+    reviewedAt: v.reviewed_at,
+    reviewNote: v.review_note,
+    createdAt: v.created_at,
+    productName: v.inspections?.product_name
+  }));
 }
 
 export async function getViolation(id: string): Promise<Violation> {
-  if (USE_MOCKS) {
-    await delay();
-    const violation = getMockViolation(id);
-    if (!violation) throw new Error(`Violation ${id} not found`);
-    return violation;
+  const { data: v, error } = await supabase
+    .from('violations')
+    .select('*, inspections(product_name)')
+    .eq('id', id)
+    .single();
+
+  if (error || !v) {
+    throw new Error(`Violation ${id} not found`);
   }
-  throw new Error('Real API not configured');
+
+  return {
+    id: v.id,
+    inspectionId: v.inspection_id,
+    type: v.type,
+    severity: v.severity,
+    field: v.field,
+    description: v.description,
+    confidence: v.confidence,
+    ruleReference: v.rule_reference_json,
+    reviewStatus: v.review_status,
+    reviewedBy: v.reviewed_by,
+    reviewedAt: v.reviewed_at,
+    reviewNote: v.review_note,
+    createdAt: v.created_at,
+    productName: v.inspections?.product_name
+  };
 }
 
 export async function updateViolationReview(
@@ -48,10 +82,19 @@ export async function updateViolationReview(
   status: string,
   note?: string
 ): Promise<void> {
-  if (USE_MOCKS) {
-    await delay(400);
-    return;
-  }
-  throw new Error('Real API not configured');
-}
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  const { error } = await supabase
+    .from('violations')
+    .update({
+      review_status: status,
+      review_note: note,
+      reviewed_by: session?.user?.id,
+      reviewed_at: new Date().toISOString()
+    })
+    .eq('id', id);
 
+  if (error) {
+    throw error;
+  }
+}

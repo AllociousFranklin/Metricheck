@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User, LoginCredentials } from '@/types';
 import * as authApi from '@/services/authApi';
+import { supabase } from '@/lib/supabase';
 
 interface AuthStore {
   user: User | null;
@@ -8,7 +9,7 @@ interface AuthStore {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: () => Promise<void>;
   logout: () => void;
   initialize: () => void;
   clearError: () => void;
@@ -18,21 +19,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true, // start loading to prevent flash
   error: null,
   
-  login: async (credentials) => {
+  login: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await authApi.login(credentials);
-      localStorage.setItem('lm_user', JSON.stringify(response.user));
-      localStorage.setItem('lm_token', response.token);
-      set({
-        user: response.user,
-        token: response.token,
-        isAuthenticated: true,
-        isLoading: false,
-      });
+      await authApi.login();
+      // the redirect will handle the rest
     } catch (err) {
       set({
         isLoading: false,
@@ -42,29 +36,48 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
   },
   
-  logout: () => {
-    localStorage.removeItem('lm_user');
-    localStorage.removeItem('lm_token');
-    set({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      error: null,
-    });
+  logout: async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        error: null,
+      });
+    }
   },
   
   initialize: () => {
-    const userStr = localStorage.getItem('lm_user');
-    const token = localStorage.getItem('lm_token');
-    if (userStr && token) {
-      try {
-        const user = JSON.parse(userStr) as User;
-        set({ user, token, isAuthenticated: true });
-      } catch {
-        localStorage.removeItem('lm_user');
-        localStorage.removeItem('lm_token');
+    // Check current session
+    authApi.getCurrentUser().then(user => {
+      set({ 
+        user, 
+        isAuthenticated: !!user,
+        isLoading: false 
+      });
+    });
+
+    // Listen for auth changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        const user = await authApi.getCurrentUser();
+        set({
+          user,
+          token: session?.access_token || null,
+          isAuthenticated: !!user,
+          isLoading: false
+        });
+      } else if (event === 'SIGNED_OUT') {
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false
+        });
       }
-    }
+    });
   },
   
   clearError: () => set({ error: null }),

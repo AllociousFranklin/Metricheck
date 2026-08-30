@@ -1,38 +1,47 @@
 import type { LoginCredentials, LoginResponse, User } from '@/types';
-import { delay, USE_MOCKS } from './api';
-import { mockUsers, mockPasswords } from '@/mocks/users';
+import { supabase } from '@/lib/supabase';
 
-export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
-  if (USE_MOCKS) {
-    await delay(800);
-    const user = mockUsers.find(u => u.email === credentials.email);
-    const validPassword = mockPasswords[credentials.email];
-    if (!user || validPassword !== credentials.password) {
-      throw new Error('Invalid email or password');
+export async function login(): Promise<void> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin
     }
-    return {
-      user,
-      token: `mock-token-${user.id}-${Date.now()}`,
-    };
+  });
+
+  if (error) {
+    throw error;
   }
-  // Real API call would go here
-  throw new Error('Real API not configured');
 }
 
-export async function getCurrentUser(): Promise<User> {
-  if (USE_MOCKS) {
-    await delay();
-    const stored = localStorage.getItem('lm_user');
-    if (!stored) throw new Error('Not authenticated');
-    return JSON.parse(stored) as User;
+export async function getCurrentUser(): Promise<User | null> {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  if (error || !session) {
+    return null;
   }
-  throw new Error('Real API not configured');
+
+  // Fetch the profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', session.user.id)
+    .single();
+
+  return {
+    id: session.user.id,
+    email: session.user.email || '',
+    name: profile?.full_name || session.user.user_metadata?.full_name || 'User',
+    role: profile?.role || 'INSPECTOR',
+    department: 'Inspection',
+    avatar: profile?.avatar_url || session.user.user_metadata?.avatar_url,
+  };
 }
 
 export async function logout(): Promise<void> {
-  if (USE_MOCKS) {
-    await delay(300);
-    return;
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    throw error;
   }
-  throw new Error('Real API not configured');
 }
+

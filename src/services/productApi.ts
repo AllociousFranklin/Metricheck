@@ -1,38 +1,95 @@
 import type { Product } from '@/types';
-import { delay, USE_MOCKS } from './api';
-import { mockProducts } from '@/mocks/products';
-import { getInspectionsByProductId } from '@/mocks/inspections';
+import { supabase } from '@/lib/supabase';
 
 export async function getProducts(filters?: {
   search?: string;
   category?: string;
 }): Promise<Product[]> {
-  if (USE_MOCKS) {
-    await delay();
-    let results = [...mockProducts];
-    if (filters?.search) {
-      const q = filters.search.toLowerCase();
-      results = results.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.manufacturer.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-      );
-    }
-    if (filters?.category) {
-      results = results.filter(p => p.category === filters.category);
-    }
-    return results;
+  let query = supabase.from('products').select('*');
+
+  if (filters?.category) {
+    query = query.eq('category', filters.category);
   }
-  throw new Error('Real API not configured');
+
+  if (filters?.search) {
+    const q = filters.search;
+    query = query.or(`name.ilike.%${q}%,manufacturer.ilike.%${q}%,category.ilike.%${q}%`);
+  }
+
+  query = query.order('last_inspection_date', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  // Map snake_case to camelCase
+  return (data || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    manufacturer: p.manufacturer,
+    netQuantity: p.net_quantity,
+    mrp: p.mrp,
+    inspectionCount: p.inspection_count,
+    lastInspectionDate: p.last_inspection_date,
+    lastComplianceScore: p.last_compliance_score,
+    lastStatus: p.last_status,
+    imageUrl: p.image_url
+  }));
 }
 
 export async function getProduct(id: string): Promise<Product & { inspections: import('@/types').Inspection[] }> {
-  if (USE_MOCKS) {
-    await delay();
-    const product = mockProducts.find(p => p.id === id);
-    if (!product) throw new Error(`Product ${id} not found`);
-    const inspections = getInspectionsByProductId(id);
-    return { ...product, inspections };
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (productError || !product) {
+    throw new Error(`Product ${id} not found`);
   }
-  throw new Error('Real API not configured');
+
+  const { data: inspections, error: inspectionsError } = await supabase
+    .from('inspections')
+    .select('*')
+    .eq('product_id', id)
+    .order('created_at', { ascending: false });
+
+  if (inspectionsError) {
+    throw inspectionsError;
+  }
+
+  // Partial mapping of inspection, we don't need full relations here normally
+  // but just matching what was returned
+  const mappedProduct = {
+    id: product.id,
+    name: product.name,
+    category: product.category,
+    manufacturer: product.manufacturer,
+    netQuantity: product.net_quantity,
+    mrp: product.mrp,
+    inspectionCount: product.inspection_count,
+    lastInspectionDate: product.last_inspection_date,
+    lastComplianceScore: product.last_compliance_score,
+    lastStatus: product.last_status,
+    imageUrl: product.image_url
+  };
+
+  const mappedInspections = (inspections || []).map((insp: any) => ({
+    id: insp.id,
+    status: insp.status,
+    complianceScore: insp.compliance_score,
+    confidence: insp.confidence,
+    createdAt: insp.created_at,
+    updatedAt: insp.updated_at,
+    product: mappedProduct
+  }));
+
+  return { 
+    ...mappedProduct, 
+    inspections: mappedInspections as import('@/types').Inspection[]
+  };
 }
+
