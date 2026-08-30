@@ -10,6 +10,7 @@ interface AuthStore {
   isLoading: boolean;
   error: string | null;
   login: () => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
   loginAsDemo: (role?: 'INSPECTOR' | 'ADMIN') => Promise<void>;
   logout: () => void;
   initialize: () => void;
@@ -32,6 +33,26 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({
         isLoading: false,
         error: err instanceof Error ? err.message : 'Login failed',
+      });
+      throw err;
+    }
+  },
+
+  loginWithEmail: async (email: string, password: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const user = await authApi.loginWithEmail(email, password);
+      set({
+        user,
+        token: 'active-session-token',
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+    } catch (err) {
+      set({
+        isLoading: false,
+        error: err instanceof Error ? err.message : 'Email sign-in failed',
       });
       throw err;
     }

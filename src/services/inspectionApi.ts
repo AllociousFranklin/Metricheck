@@ -380,15 +380,24 @@ export async function runLegalMetrologyAudit(images: (File | Blob | string)[]): 
     }))
   };
 
-  // Persist to Supabase
-  await persistInspectionToSupabase(newInspection);
+  // Always keep in active in-memory store
+  mockInspections.unshift(newInspection);
+
+  // Persist to Supabase if session active
+  try {
+    await persistInspectionToSupabase(newInspection);
+  } catch (err) {
+    console.warn('Could not persist inspection to Supabase (local session active):', err);
+  }
   return auditRes;
 }
 
 async function persistInspectionToSupabase(inspection: Inspection) {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
-  if (!userId) throw new Error('Not authenticated');
+  if (!userId) {
+    return;
+  }
 
   // Insert or Upsert Product
   let productId = inspection.product.id;
