@@ -24,10 +24,10 @@ export const AnalyticsPage: React.FC = () => {
     return <div className="p-8 text-error">Failed to load analytics data.</div>;
   }
 
-  const { stats, trends, violationsByCategory } = data as any;
-  const complianceRate = Math.round((stats?.compliant / stats?.total) * 100) || 0;
+  const stats = data as any;
+  const complianceRate = stats?.complianceRate || 0;
 
-  const pieData = violationsByCategory?.map((v: any) => ({ name: v.category, value: v.count }));
+  const pieData = (stats?.violationCategories || []).map((v: any) => ({ name: v.category, value: v.count }));
 
   return (
     <div className="space-y-6 pb-12">
@@ -81,9 +81,9 @@ export const AnalyticsPage: React.FC = () => {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={trends} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                <BarChart data={stats?.complianceTrend || []} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="month" stroke="#6B7280" />
+                  <XAxis dataKey="date" stroke="#6B7280" />
                   <YAxis stroke="#6B7280" />
                   <Tooltip contentStyle={{ borderRadius: '8px' }} />
                   <Bar dataKey="total" name="Inspections" fill="#16324F" radius={[4, 4, 0, 0]} />

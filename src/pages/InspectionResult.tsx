@@ -308,7 +308,7 @@ const DeclarationDetail: React.FC<DeclarationDetailProps> = ({
             </h4>
             <div className="flex items-center mt-1 space-x-2">
               <span className="text-xs text-neutral-500 truncate max-w-[150px]">
-                {declaration.extractedValue || "No value extracted"}
+                {declaration.extractedText || declaration.value || "No value extracted"}
               </span>
               <span className="text-neutral-600 text-xs">•</span>
               <span className={cn("text-xs font-medium", 
@@ -337,22 +337,22 @@ const DeclarationDetail: React.FC<DeclarationDetailProps> = ({
               <div className="mb-4 mt-3">
                 <h5 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Extracted Information</h5>
                 <div className="bg-white p-3 rounded border border-neutral-200 text-sm font-mono text-neutral-800 break-words">
-                  {declaration.extractedValue || "No text could be extracted."}
+                  {declaration.extractedText || declaration.value || "No text could be extracted."}
                 </div>
               </div>
               
               <div>
                 <h5 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Compliance Checks</h5>
                 <div className="bg-white rounded border border-neutral-200 px-3">
-                  {declaration.complianceChecks.map((check, idx) => (
+                  {(declaration.checks || []).map((check: any, idx: number) => (
                     <ComplianceCheckRow 
                       key={idx}
-                      label={check.name}
+                      label={check.name || check.label}
                       status={check.status}
-                      message={check.message}
+                      message={check.message || check.description}
                     />
                   ))}
-                  {declaration.complianceChecks.length === 0 && (
+                  {(!declaration.checks || declaration.checks.length === 0) && (
                     <div className="py-3 text-sm text-neutral-500 text-center">
                       No specific checks available.
                     </div>
@@ -403,10 +403,12 @@ const FindingCard: React.FC<FindingCardProps> = ({ violation, onReview }) => {
       <CardContent className="px-4 pb-4 pt-2">
         <p className="text-sm text-neutral-700 mb-3">{violation.description}</p>
         
-        <div className="flex items-center space-x-2 mb-4 bg-neutral-25 p-2 rounded text-xs text-neutral-600 border border-neutral-100">
-          <FileText className="w-3.5 h-3.5" />
-          <span>Rule Ref: <span className="font-semibold">{violation.ruleReference.section}</span> - {violation.ruleReference.title}</span>
-        </div>
+        {violation.ruleReference && (
+          <div className="flex items-center space-x-2 mb-4 bg-neutral-25 p-2 rounded text-xs text-neutral-600 border border-neutral-100">
+            <FileText className="w-3.5 h-3.5" />
+            <span>Rule Ref: <span className="font-semibold">{violation.ruleReference.section}</span> - {violation.ruleReference.title}</span>
+          </div>
+        )}
         
         {(!violation.reviewStatus || violation.reviewStatus === 'PENDING') && (
           <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-neutral-100">
@@ -457,10 +459,12 @@ export const InspectionResultPage: React.FC = () => {
   // Review mutation
   const reviewMutation = useMutation({
     mutationFn: ({ violationId, action, comment }: { violationId: string, action: 'accept' | 'reject', comment?: string }) => 
-      updateViolationReview(id!, violationId, {
-        status: action === 'accept' ? 'ACCEPTED' : 'REJECTED',
+      updateViolationReview(
+        id!, 
+        violationId, 
+        action === 'accept' ? 'ACCEPTED' : 'REJECTED', 
         comment
-      }),
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inspection', id] });
       addToast('Review updated successfully', 'success');
@@ -505,8 +509,8 @@ export const InspectionResultPage: React.FC = () => {
   };
 
   // derived state
-  const declarations = inspection?.results?.declarations || [];
-  const violations = inspection?.results?.violations || [];
+  const declarations = inspection?.declarations || inspection?.analysisResult?.declarations || [];
+  const violations = inspection?.violations || inspection?.analysisResult?.violations || [];
   
   const passCount = declarations.filter(d => d.status === 'PASS').length;
   const failCount = declarations.filter(d => d.status === 'FAIL').length;
@@ -564,7 +568,7 @@ export const InspectionResultPage: React.FC = () => {
               <Button 
                 onClick={handleGenerateReport} 
                 isLoading={reportMutation.isPending}
-                disabled={inspection.status !== 'COMPLETED' && inspection.status !== 'REVIEW_REQUIRED'}
+                disabled={['IN_PROGRESS', 'DRAFT'].includes(inspection.status)}
               >
                 <FileText className="w-4 h-4 mr-2" /> Generate Report
               </Button>
@@ -581,19 +585,19 @@ export const InspectionResultPage: React.FC = () => {
           <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
             Inspection Sections
           </div>
-          <a href="#overview" className="flex items-center px-3 py-2 text-sm font-medium rounded-md bg-primary/5 text-primary">
+          <a href="#overview" onClick={(e) => { e.preventDefault(); document.getElementById('overview')?.scrollIntoView({ behavior: 'smooth' }); }} className="flex items-center px-3 py-2 text-sm font-medium rounded-md bg-primary/5 text-primary">
             <Eye className="w-4 h-4 mr-3" /> Overview
           </a>
-          <a href="#declarations" className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-neutral-600 hover:bg-neutral-25">
+          <a href="#declarations" onClick={(e) => { e.preventDefault(); document.getElementById('declarations')?.scrollIntoView({ behavior: 'smooth' }); }} className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-neutral-600 hover:bg-neutral-25">
             <CheckCircle className="w-4 h-4 mr-3" /> Declarations
           </a>
-          <a href="#findings" className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-neutral-600 hover:bg-neutral-25">
+          <a href="#findings" onClick={(e) => { e.preventDefault(); document.getElementById('findings')?.scrollIntoView({ behavior: 'smooth' }); }} className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-neutral-600 hover:bg-neutral-25">
             <AlertTriangle className="w-4 h-4 mr-3" /> Findings
             {violations.length > 0 && (
               <Badge variant="error" className="ml-auto text-[10px] px-1.5 py-0 min-w-[20px] text-center">{violations.length}</Badge>
             )}
           </a>
-          <a href="#timeline" className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-neutral-600 hover:bg-neutral-25">
+          <a href="#timeline" onClick={(e) => { e.preventDefault(); document.getElementById('timeline')?.scrollIntoView({ behavior: 'smooth' }); }} className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-neutral-600 hover:bg-neutral-25">
             <Clock className="w-4 h-4 mr-3" /> Timeline
           </a>
           
@@ -745,38 +749,32 @@ export const InspectionResultPage: React.FC = () => {
               <h2 className="text-lg font-bold text-neutral-900 mb-4 border-b border-neutral-100 pb-2">Inspection Timeline</h2>
               
               <div className="relative pl-6 space-y-6 before:absolute before:inset-y-2 before:left-[11px] before:w-px before:bg-neutral-200">
-                <div className="relative">
-                  <div className="absolute -left-6 bg-white p-0.5 rounded-full z-10 border border-neutral-200">
-                    <div className="w-3.5 h-3.5 rounded-full bg-primary/20"></div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-neutral-900">Inspection Created</div>
-                    <div className="text-xs text-neutral-500 mt-0.5">{formatDateTime(inspection.createdAt)}</div>
-                  </div>
-                </div>
-                
-                <div className="relative">
-                  <div className="absolute -left-6 bg-white p-0.5 rounded-full z-10 border border-neutral-200">
-                    <div className="w-3.5 h-3.5 rounded-full bg-primary/50"></div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-neutral-900">AI Analysis Started</div>
-                    <div className="text-xs text-neutral-500 mt-0.5">Automated visual inspection initiated</div>
-                  </div>
-                </div>
-                
-                <div className="relative">
-                  <div className="absolute -left-6 bg-white p-0.5 rounded-full z-10 border border-neutral-200">
-                    <div className="w-3.5 h-3.5 rounded-full bg-success"></div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-neutral-900">Analysis Completed</div>
-                    <div className="text-xs text-neutral-500 mt-0.5">{formatDateTime(inspection.updatedAt)}</div>
-                    <div className="mt-2 text-xs bg-neutral-25 p-2 rounded border border-neutral-100 inline-block">
-                      Found {declarations.length} declarations, {violations.length} findings
+                {inspection.timeline && inspection.timeline.length > 0 ? (
+                  inspection.timeline.map((event, index) => (
+                    <div key={event.id || index} className="relative">
+                      <div className="absolute -left-6 bg-white p-0.5 rounded-full z-10 border border-neutral-200">
+                        <div className={cn(
+                          "w-3.5 h-3.5 rounded-full",
+                          event.type === 'created' ? 'bg-primary/20' :
+                          event.type === 'analysis_completed' ? 'bg-success' :
+                          event.type === 'findings_detected' ? 'bg-warning' :
+                          'bg-primary/50'
+                        )}></div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-neutral-900">{event.label}</div>
+                        <div className="text-xs text-neutral-500 mt-0.5">{formatDateTime(event.timestamp)}</div>
+                        {event.description && (
+                          <div className="mt-1 text-xs text-neutral-600">
+                            {event.description}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-neutral-500 italic py-4">No timeline events available.</div>
+                )}
               </div>
             </section>
             

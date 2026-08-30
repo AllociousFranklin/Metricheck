@@ -28,6 +28,12 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@types/babel__generator": "^7.27.0",
+    "@types/babel__template": "^7.4.4",
+    "@types/babel__traverse": "^7.28.0",
+    "@types/d3-color": "^3.1.3",
+    "@types/d3-path": "^3.1.1",
+    "@types/prop-types": "^15.7.15",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
@@ -38,7 +44,14 @@
     "typescript": "~5.6.2",
     "vite": "^6.0.0"
   },
-  "keywords": ["legal-metrology", "computer-vision", "opencv-js", "package-scanner", "gemini-flash", "compliance-engine"],
+  "keywords": [
+    "legal-metrology",
+    "computer-vision",
+    "opencv-js",
+    "package-scanner",
+    "gemini-flash",
+    "compliance-engine"
+  ],
   "author": "",
   "license": "MIT"
 }

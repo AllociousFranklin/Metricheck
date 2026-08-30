@@ -15,7 +15,7 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
-  const normalizedStatus = status.toUpperCase();
+  const normalizedStatus = (status || 'UNKNOWN').toUpperCase();
   
   let variant: 'success' | 'error' | 'warning' | 'info' = 'info';
   let Icon = Info;

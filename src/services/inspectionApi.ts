@@ -410,8 +410,22 @@ export async function updateViolationReview(
 ): Promise<void> {
   if (USE_MOCKS) {
     await delay(400);
-    // In a real app, this would persist
+    const inspection = mockInspections.find(i => i.id === inspectionId);
+    if (inspection) {
+      const violation = (inspection.violations || []).find(v => v.id === violationId);
+      if (violation) {
+        violation.reviewStatus = reviewStatus as any;
+        violation.reviewNote = reviewNote;
+      } else if (inspection.analysisResult && inspection.analysisResult.violations) {
+        const arViolation = inspection.analysisResult.violations.find(v => v.id === violationId);
+        if (arViolation) {
+          arViolation.reviewStatus = reviewStatus as any;
+          arViolation.reviewNote = reviewNote;
+        }
+      }
+    }
     return;
   }
   throw new Error('Real API not configured');
 }
+

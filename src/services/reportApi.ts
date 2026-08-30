@@ -43,14 +43,44 @@ export async function getReportByInspection(inspectionId: string): Promise<Repor
   throw new Error('Real API not configured');
 }
 
+import { getInspectionById } from '@/mocks/inspections';
+
 export async function generateReport(inspectionId: string): Promise<Report> {
   if (USE_MOCKS) {
     await delay(1500);
     // Return an existing report or generate one
     const existing = getMockReportByInspection(inspectionId);
     if (existing) return existing;
-    // Fallback - return first mock report modified
-    return { ...mockReports[0], inspectionId, id: `RPT-2026-${Date.now()}` };
+    
+    const inspection = getInspectionById(inspectionId);
+    if (!inspection) throw new Error('Inspection not found');
+
+    const passCount = inspection.declarations.filter(d => d.status === 'PASS').length;
+    const failCount = inspection.declarations.filter(d => d.status === 'FAIL').length;
+    const reviewCount = inspection.declarations.filter(d => d.status === 'REVIEW').length;
+    
+    const newReport: Report = {
+      id: `RPT-2026-${Date.now()}`,
+      inspectionId,
+      productId: inspection.product.id,
+      productName: inspection.product.name,
+      status: 'GENERATED',
+      assessmentStatus: inspection.status === 'COMPLIANT' ? 'COMPLIANT' : inspection.status === 'NEEDS_REVIEW' ? 'NEEDS_REVIEW' : 'NON_COMPLIANT',
+      complianceScore: inspection.complianceScore,
+      passedChecks: passCount,
+      failedChecks: failCount,
+      reviewChecks: reviewCount,
+      totalChecks: inspection.declarations.length,
+      generatedAt: new Date().toISOString(),
+      inspectorName: inspection.inspectorName,
+      generatedBy: "System",
+      findings: [],
+      evidenceImages: [],
+      ruleSetVersion: '2026.1',
+    };
+    
+    mockReports.unshift(newReport);
+    return newReport;
   }
   throw new Error('Real API not configured');
 }
