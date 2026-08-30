@@ -32,6 +32,13 @@ export interface Violation {
   description: string;
   confidence: number;
   evidenceImage?: string;
+  evidenceImageUrl?: string;
+  boundingBox?: {
+    top: number | string;
+    left: number | string;
+    width: number | string;
+    height: number | string;
+  };
   extractedValue?: string;
   expectedValue?: string;
   ruleReference?: RuleReference;
@@ -42,4 +49,5 @@ export interface Violation {
   productName?: string;
   productId?: string;
   createdAt: string;
+  date?: string;
 }

@@ -53,7 +53,8 @@ export function ToastContainer() {
                   <Icon className={cn('h-5 w-5', iconColors[toast.type])} aria-hidden="true" />
                 </div>
                 <div className="ml-3 w-0 flex-1 pt-0.5 text-left">
-                  <p className="text-sm font-medium text-neutral-900">{toast.message}</p>
+                  {toast.title && <p className="text-sm font-semibold text-neutral-900 mb-0.5">{toast.title}</p>}
+                  <p className="text-xs text-neutral-600">{toast.message}</p>
                 </div>
                 <div className="ml-4 flex flex-shrink-0">
                   <button

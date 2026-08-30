@@ -1,15 +1,16 @@
-// @ts-nocheck
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Printer, Download, FileEdit, ArrowLeft, Shield } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/Button';
-import { getReport } from '@/services/reportApi';
+import { getReport, exportReport } from '@/services/reportApi';
+import { APP_CONFIG } from '@/app/config';
 
 export const ReportPreviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const { data: report, isLoading, error } = useQuery({
     queryKey: ['report', id],
@@ -20,6 +21,37 @@ export const ReportPreviewPage: React.FC = () => {
   const handlePrint = () => {
     window.print();
   };
+
+  const handleExportJson = async () => {
+    if (!report) return;
+    try {
+      const blob = await exportReport(report.id, 'json');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `metricheck_report_${report.id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Direct client fallback
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
+      const a = document.createElement('a');
+      a.href = dataStr;
+      a.download = `metricheck_report_${report.id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  useEffect(() => {
+    if (searchParams.get('print') === 'true' && report) {
+      const timer = setTimeout(() => window.print(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, report]);
 
   if (isLoading) {
     return <div className="p-8 text-center">Loading report...</div>;
@@ -44,8 +76,8 @@ export const ReportPreviewPage: React.FC = () => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => {}}>
-            <FileEdit className="w-4 h-4 mr-2" /> Export Editable
+          <Button variant="outline" onClick={handleExportJson}>
+            <FileEdit className="w-4 h-4 mr-2" /> Export JSON / Editable
           </Button>
           <Button variant="primary" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" /> Print / Save PDF
@@ -62,7 +94,7 @@ export const ReportPreviewPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-primary uppercase tracking-wider mb-2">
             METRICHECK Compliance Assessment Report
           </h1>
-          <p className="text-neutral-600">Generated on {new Date(report.generatedDate).toLocaleString()}</p>
+          <p className="text-neutral-600">Generated on {new Date(report.generatedAt || report.generatedDate || Date.now()).toLocaleString()}</p>
         </div>
 
         {/* Info Grid */}
@@ -72,7 +104,7 @@ export const ReportPreviewPage: React.FC = () => {
             <div className="space-y-2">
               <p><span className="font-semibold text-neutral-600 inline-block w-32">Report ID:</span> {report.id}</p>
               <p><span className="font-semibold text-neutral-600 inline-block w-32">Inspection ID:</span> {report.inspectionId}</p>
-              <p><span className="font-semibold text-neutral-600 inline-block w-32">Date:</span> {new Date(report.inspectionDate).toLocaleDateString()}</p>
+              <p><span className="font-semibold text-neutral-600 inline-block w-32">Date:</span> {new Date(report.inspectionDate || report.generatedAt || Date.now()).toLocaleDateString()}</p>
               <p><span className="font-semibold text-neutral-600 inline-block w-32">Inspector:</span> {report.inspectorName}</p>
             </div>
           </div>
@@ -80,8 +112,8 @@ export const ReportPreviewPage: React.FC = () => {
             <h2 className="font-bold text-neutral-900 border-b border-neutral-200 pb-2 mb-3 uppercase tracking-wide">Product Details</h2>
             <div className="space-y-2">
               <p><span className="font-semibold text-neutral-600 inline-block w-32">Product Name:</span> {report.productName}</p>
-              <p><span className="font-semibold text-neutral-600 inline-block w-32">Manufacturer:</span> {report.manufacturer}</p>
-              <p><span className="font-semibold text-neutral-600 inline-block w-32">Category:</span> {report.category}</p>
+              <p><span className="font-semibold text-neutral-600 inline-block w-32">Manufacturer:</span> {report.manufacturer || 'Declared Entity'}</p>
+              <p><span className="font-semibold text-neutral-600 inline-block w-32">Category:</span> {report.category || 'Packaged Commodity'}</p>
             </div>
           </div>
         </div>
@@ -98,7 +130,7 @@ export const ReportPreviewPage: React.FC = () => {
           )}>
             {isCompliant ? "COMPLIANT" : "POTENTIAL NON-COMPLIANCE"}
           </div>
-          <p className="text-neutral-700">Compliance Score: <span className="font-bold">{report.score}%</span></p>
+          <p className="text-neutral-700">Compliance Score: <span className="font-bold">{report.complianceScore ?? report.score ?? 100}%</span></p>
         </div>
 
         {/* Summary Stats */}
@@ -106,15 +138,15 @@ export const ReportPreviewPage: React.FC = () => {
           <h2 className="font-bold text-neutral-900 border-b border-neutral-200 pb-2 mb-4 uppercase tracking-wide">Assessment Summary</h2>
           <div className="flex gap-4">
             <div className="flex-1 bg-neutral-25 p-4 rounded text-center border border-neutral-200">
-              <p className="text-3xl font-bold text-success mb-1">{report.summary.passedChecks}</p>
+              <p className="text-3xl font-bold text-success mb-1">{report.summary?.passedChecks ?? report.passedChecks ?? 0}</p>
               <p className="text-xs text-neutral-600 uppercase font-semibold">Checks Passed</p>
             </div>
             <div className="flex-1 bg-neutral-25 p-4 rounded text-center border border-neutral-200">
-              <p className="text-3xl font-bold text-error mb-1">{report.summary.totalFindings}</p>
+              <p className="text-3xl font-bold text-error mb-1">{report.summary?.totalFindings ?? report.failedChecks ?? 0}</p>
               <p className="text-xs text-neutral-600 uppercase font-semibold">Total Findings</p>
             </div>
             <div className="flex-1 bg-neutral-25 p-4 rounded text-center border border-neutral-200">
-              <p className="text-3xl font-bold text-warning mb-1">{report.summary.pendingReviews}</p>
+              <p className="text-3xl font-bold text-warning mb-1">{report.summary?.pendingReviews ?? report.reviewChecks ?? 0}</p>
               <p className="text-xs text-neutral-600 uppercase font-semibold">Pending Reviews</p>
             </div>
           </div>
@@ -163,7 +195,7 @@ export const ReportPreviewPage: React.FC = () => {
         {/* Footer */}
         <div className="mt-16 pt-6 border-t border-neutral-200 text-center text-xs text-neutral-500 print:mt-auto">
           <p>Generated by METRICHECK Compliance Inspection Platform</p>
-          <p>Rule Set Version: v2024.1 (Effective Jan 2024)</p>
+          <p>Rule Set Version: v{APP_CONFIG.ruleSetVersion}</p>
           <p className="mt-2 text-neutral-500">This document is system generated and may require manual verification.</p>
         </div>
 

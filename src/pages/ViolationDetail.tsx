@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -78,7 +77,7 @@ export const ViolationDetailPage: React.FC = () => {
 
       <PageHeader 
         title={`${violation.type} Finding`} 
-        subtitle={`Detected on ${new Date(violation.date).toLocaleDateString()}`} 
+        subtitle={`Detected on ${new Date(violation.createdAt || violation.date || Date.now()).toLocaleDateString()}`} 
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -90,7 +89,7 @@ export const ViolationDetailPage: React.FC = () => {
                 <AlertCircle className="w-5 h-5 mr-2 text-warning" />
                 Finding Overview
               </CardTitle>
-              <StatusBadge status={violation.reviewStatus} />
+              <StatusBadge status={violation.reviewStatus as any} />
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -116,26 +115,20 @@ export const ViolationDetailPage: React.FC = () => {
                   </div>
                   <div>
                     <span className="block text-xs text-neutral-500 mb-1">Confidence</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-neutral-900">{violation.confidence}%</span>
-                      <div className="w-12 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
-                        <div 
-                          className={cn("h-full rounded-full", violation.confidence > 80 ? "bg-success" : "bg-warning")}
-                          style={{ width: `${violation.confidence}%` }}
-                        />
-                      </div>
-                    </div>
+                    <span className="font-medium text-neutral-900">{Math.round(violation.confidence * 100)}%</span>
                   </div>
                   <div>
-                    <span className="block text-xs text-neutral-500 mb-1">Source</span>
-                    <span className="font-medium text-neutral-900">Vision AI</span>
+                    <span className="block text-xs text-neutral-500 mb-1">Inspection ID</span>
+                    <Link to={`/inspections/${violation.inspectionId}`} className="font-medium text-primary hover:underline">
+                      {violation.inspectionId}
+                    </Link>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Evidence */}
+          {/* Evidence Details */}
           <Card className="bg-white border-neutral-100 shadow-sm">
             <CardHeader>
               <CardTitle className="text-h3 flex items-center">
@@ -147,8 +140,8 @@ export const ViolationDetailPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <div className="aspect-video bg-white rounded-lg border border-neutral-200 flex items-center justify-center relative overflow-hidden mb-2">
-                    {violation.evidenceImageUrl ? (
-                      <img src={violation.evidenceImageUrl} alt="Evidence" className="object-cover w-full h-full" />
+                    {(violation.evidenceImage || violation.evidenceImageUrl) ? (
+                      <img src={violation.evidenceImage || violation.evidenceImageUrl} alt="Evidence" className="object-cover w-full h-full" />
                     ) : (
                       <div className="text-center text-neutral-500">
                         <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -156,7 +149,17 @@ export const ViolationDetailPage: React.FC = () => {
                       </div>
                     )}
                     {/* Simulated bounding box */}
-                    <div className="absolute top-1/4 left-1/4 w-1/2 h-1/4 border-2 border-error bg-error/10 rounded"></div>
+                    {violation.boundingBox && (
+                      <div 
+                        className="absolute border-2 border-error bg-error/10 rounded"
+                        style={{
+                          top: violation.boundingBox.top,
+                          left: violation.boundingBox.left,
+                          width: violation.boundingBox.width,
+                          height: violation.boundingBox.height
+                        }}
+                      ></div>
+                    )}
                   </div>
                   <p className="text-xs text-neutral-500 text-center">Highlighted region indicates detected issue</p>
                 </div>
@@ -168,7 +171,7 @@ export const ViolationDetailPage: React.FC = () => {
                   </div>
                   <div className="p-4 bg-white border-l-4 border-l-success border border-success/20 rounded-lg">
                     <span className="block text-xs font-semibold text-success mb-1 uppercase tracking-wide">Expected Value / Format</span>
-                    <p className="text-neutral-900 font-mono break-all">{violation.expectedValue || 'As per rules'}</p>
+                    <p className="text-neutral-900 font-mono break-all">{violation.expectedValue || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -236,10 +239,10 @@ export const ViolationDetailPage: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="p-4 bg-neutral-25 rounded-lg border border-neutral-100">
-                <h4 className="font-semibold text-neutral-900 mb-1">{violation.ruleReference?.title || 'PCR Rules, 2011'}</h4>
-                <p className="text-sm font-medium text-primary mb-2">Section {violation.ruleReference?.section || '6(1)'}</p>
+                <h4 className="font-semibold text-neutral-900 mb-1">{violation.ruleReference?.title || 'N/A'}</h4>
+                <p className="text-sm font-medium text-primary mb-2">Section {violation.ruleReference?.section || 'N/A'}</p>
                 <p className="text-xs text-neutral-600 italic">
-                  "{violation.ruleReference?.description || 'Every package shall bear thereon or on a label securely affixed thereto, a definite, plain and conspicuous declaration...'}"
+                  "{violation.ruleReference?.description || ''}"
                 </p>
               </div>
             </CardContent>

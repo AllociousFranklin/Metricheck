@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { useAuthStore } from '@/stores/authStore';
+import { useToastStore } from '@/stores/toastStore';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const { login, isAuthenticated, isLoading, error } = useAuthStore();
+  const { addToast } = useToastStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -117,8 +119,8 @@ export const LoginPage: React.FC = () => {
 
                 <button
                   type="button"
-                  className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-neutral-200 rounded-md bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-medium shadow-sm"
-                  onClick={() => {/* Mock Google Auth */ }}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-neutral-200 rounded-md bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-medium shadow-sm opacity-60 cursor-not-allowed"
+                  onClick={() => addToast({ title: 'Coming Soon', message: 'Google OAuth integration will be available in a future release.', type: 'info' })}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -127,6 +129,7 @@ export const LoginPage: React.FC = () => {
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                   </svg>
                   Continue with Google
+                  <span className="ml-2 text-[10px] uppercase font-bold bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded">Coming Soon</span>
                 </button>
               </form>
             </CardContent>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useDebouncedValue } from '@/utils/useDebounce';
 import { Search, Filter, FileText, Download, Printer } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -13,10 +14,11 @@ export const ReportsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['reports', statusFilter, searchTerm],
-    queryFn: () => getReports({ status: statusFilter !== 'All' ? statusFilter : undefined, search: searchTerm }),
+    queryKey: ['reports', statusFilter, debouncedSearch],
+    queryFn: () => getReports({ status: statusFilter !== 'All' ? statusFilter : undefined, search: debouncedSearch }),
   });
 
   return (
@@ -124,7 +126,7 @@ export const ReportsPage: React.FC = () => {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => {}}
+                            onClick={() => navigate(`/reports/${report.id}?print=true`)}
                             className="text-secondary hover:bg-secondary/10 hidden sm:inline-flex"
                             title="Download PDF"
                           >

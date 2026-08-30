@@ -98,28 +98,27 @@ const BoundingBoxOverlay: React.FC<BoundingBoxOverlayProps> = ({
       className={cn(
         'absolute cursor-pointer border-2 transition-all duration-200 group flex flex-col',
         borderColorClass,
-        isSelected ? cn(bgColorClass, 'shadow-lg z-20 border-4 scale-[1.02]') : 'hover:border-4 z-10'
+        bgColorClass,
+        isSelected && 'ring-2 ring-primary ring-offset-1 z-20'
       )}
       style={{
-        top: `${top * 100}%`,
-        left: `${left * 100}%`,
-        width: `${width * 100}%`,
-        height: `${height * 100}%`,
+        top: `${top}%`,
+        left: `${left}%`,
+        width: `${width}%`,
+        height: `${height}%`,
       }}
     >
       <div className={cn(
-        "absolute -top-6 left-0 px-2 py-0.5 text-xs font-semibold text-white whitespace-nowrap transition-opacity",
-        declaration.status === 'PASS' ? 'bg-success' : declaration.status === 'FAIL' ? 'bg-error' : 'bg-warning',
-        isSelected ? 'opacity-100 z-30' : 'opacity-0 group-hover:opacity-100 z-20'
+        'opacity-0 group-hover:opacity-100 transition-opacity bg-neutral-900 text-white text-[10px] px-1.5 py-0.5 rounded -top-6 left-0 absolute whitespace-nowrap z-30 pointer-events-none'
       )}>
-        {DECLARATION_LABELS[declaration.type] || declaration.type}
+        {declaration.label} ({declaration.status})
       </div>
     </div>
   );
 };
 
 interface ImageViewerProps {
-  imageUrls: string[];
+  imageUrls: (string | { id?: string; url: string; category?: string; fileName?: string })[];
   declarations: Declaration[];
   selectedDeclarationId: string | null;
   onSelectDeclaration: (id: string | null) => void;
@@ -132,18 +131,35 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   onSelectDeclaration 
 }) => {
   const [scale, setScale] = useState(1);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
   
   const handleZoomIn = () => setScale(s => Math.min(s + 0.2, 3));
   const handleZoomOut = () => setScale(s => Math.max(s - 0.2, 0.5));
   const handleReset = () => setScale(1);
 
-  // Note: Using a mockup container instead of real images as requested
+  const normalizedImages = useMemo(() => {
+    return (imageUrls || []).map((img, idx) => {
+      if (typeof img === 'string') {
+        return { id: `img-${idx}`, url: img, category: `View ${idx + 1}` };
+      }
+      return {
+        id: img.id || `img-${idx}`,
+        url: img.url,
+        category: img.category || `View ${idx + 1}`
+      };
+    }).filter(img => Boolean(img.url));
+  }, [imageUrls]);
+
+  const currentImage = normalizedImages[activeImageIdx] || normalizedImages[0];
+
   return (
     <div className="flex flex-col h-full bg-white rounded-lg border border-neutral-200 overflow-hidden">
       <div className="flex items-center justify-between p-3 bg-white border-b border-neutral-200">
         <div className="flex items-center space-x-2">
           <ImageIcon className="w-5 h-5 text-neutral-500" />
-          <span className="text-sm font-medium text-neutral-700">Product Analysis View</span>
+          <span className="text-sm font-medium text-neutral-700">
+            {currentImage ? `Package View (${activeImageIdx + 1} of ${normalizedImages.length})` : 'Product Analysis View'}
+          </span>
         </div>
         <div className="flex items-center space-x-2 bg-white p-1 rounded-md">
           <Button variant="ghost" size="sm" onClick={handleZoomOut} className="h-8 w-8 p-0" title="Zoom Out">
@@ -161,44 +177,63 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       </div>
       
       <div 
-        className="flex-1 overflow-auto relative flex items-center justify-center p-4 bg-neutral-200"
+        className="flex-1 overflow-auto relative flex items-center justify-center p-4 bg-neutral-900/5 min-h-[400px]"
         onClick={() => onSelectDeclaration(null)}
       >
-        <div 
-          className="relative bg-white shadow-md transition-transform duration-200 origin-center"
-          style={{ 
-            width: '400px', 
-            height: '600px',
-            transform: `scale(${scale})`
-          }}
-        >
-          {/* Mock Package Background */}
-          <div className="absolute inset-0 bg-neutral-25 border border-neutral-200 p-8 flex flex-col">
-            <div className="h-32 bg-primary/10 rounded-md mb-8 flex items-center justify-center">
-              <span className="text-primary/40 font-bold text-xl">PRODUCT LABEL AREA</span>
-            </div>
-            <div className="flex-1 flex flex-col space-y-4">
-              <div className="h-8 bg-neutral-200 w-3/4 rounded"></div>
-              <div className="h-4 bg-neutral-200 w-1/2 rounded"></div>
-              <div className="h-4 bg-neutral-200 w-full rounded mt-4"></div>
-              <div className="h-4 bg-neutral-200 w-full rounded"></div>
-              <div className="h-4 bg-neutral-200 w-2/3 rounded"></div>
-              <div className="mt-auto h-24 bg-neutral-200 rounded"></div>
-            </div>
-          </div>
-          
-          {/* Bounding Boxes */}
-          {declarations.map(dec => (
-            <BoundingBoxOverlay 
-              key={dec.id}
-              declaration={dec}
-              isSelected={selectedDeclarationId === dec.id}
-              onClick={() => onSelectDeclaration(dec.id)}
-              scale={scale}
+        {currentImage ? (
+          <div 
+            className="relative bg-white shadow-lg rounded-lg overflow-hidden transition-transform duration-200 origin-center max-w-full max-h-full flex items-center justify-center"
+            style={{ 
+              transform: `scale(${scale})`
+            }}
+          >
+            <img 
+              src={currentImage.url} 
+              alt="Scanned Package" 
+              className="max-w-full max-h-[520px] object-contain rounded select-none"
             />
+            
+            {/* Bounding Boxes */}
+            {declarations.map(dec => (
+              <BoundingBoxOverlay 
+                key={dec.id}
+                declaration={dec}
+                isSelected={selectedDeclarationId === dec.id}
+                onClick={() => onSelectDeclaration(dec.id)}
+                scale={scale}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center text-neutral-400 p-8">
+            <ImageIcon className="w-16 h-16 mb-2 opacity-40" />
+            <p className="text-sm font-medium">No Package Images Captured</p>
+          </div>
+        )}
+      </div>
+
+      {normalizedImages.length > 1 && (
+        <div className="p-2.5 bg-neutral-50 border-t border-neutral-200 flex items-center gap-2 overflow-x-auto">
+          {normalizedImages.map((img, idx) => (
+            <button
+              key={img.id || idx}
+              type="button"
+              onClick={() => setActiveImageIdx(idx)}
+              className={cn(
+                "relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all",
+                activeImageIdx === idx 
+                  ? "border-primary shadow-sm ring-1 ring-primary" 
+                  : "border-neutral-300 opacity-60 hover:opacity-100"
+              )}
+            >
+              <img src={img.url} alt={`Angle ${idx + 1}`} className="w-full h-full object-cover" />
+              <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] font-mono text-white text-center py-0.5">
+                {idx + 1}
+              </span>
+            </button>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 };

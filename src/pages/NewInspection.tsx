@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Upload, X, CheckCircle, AlertTriangle, Scan, Camera, ShieldAlert, Check, AlertCircle, Sparkles, ArrowRight } from 'lucide-react';
 import { runLegalMetrologyAudit, AuditResponse, ComplianceCheck, ExtractedData } from '@/services/inspectionApi';
+import { getInspectionById, addInspection } from '@/mocks/inspections';
+import { useToastStore } from '@/stores/toastStore';
 import { PackageAutoScanner, CapturedView } from '@/components/scanner/PackageAutoScanner';
 import { cn } from '@/utils/cn';
 
 export const NewInspectionPage: React.FC = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { addToast } = useToastStore();
   
   const [activeTab, setActiveTab] = useState<'camera' | 'upload'>('camera');
   const [step, setStep] = useState<'capture' | 'processing' | 'results'>('capture');
@@ -39,19 +42,39 @@ export const NewInspectionPage: React.FC = () => {
     startAnalysisWithImages(formatted);
   };
 
+  const processIncomingFiles = (files: File[]) => {
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    const validImages: { blob: File | Blob; previewUrl: string }[] = [];
+    const rejectedNames: string[] = [];
+
+    files.forEach(file => {
+      if (!validTypes.includes(file.type)) {
+        rejectedNames.push(`${file.name} (unsupported format)`);
+      } else if (file.size > 20 * 1024 * 1024) {
+        rejectedNames.push(`${file.name} (exceeds 20MB)`);
+      } else {
+        validImages.push({ blob: file, previewUrl: URL.createObjectURL(file) });
+      }
+    });
+
+    if (rejectedNames.length > 0) {
+      addToast({
+        title: 'Some files could not be added',
+        message: rejectedNames.join(', '),
+        type: 'warning'
+      });
+    }
+
+    if (validImages.length > 0) {
+      setCapturedImages(prev => [...prev, ...validImages]);
+      setErrorMsg(null);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files);
-      
-      const newImages = newFiles.map(file => {
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-        if (!validTypes.includes(file.type)) return null;
-        if (file.size > 20 * 1024 * 1024) return null;
-        return { blob: file, previewUrl: URL.createObjectURL(file) };
-      }).filter(Boolean) as { blob: File | Blob; previewUrl: string }[];
-      
-      setCapturedImages(prev => [...prev, ...newImages]);
-      setErrorMsg(null);
+      processIncomingFiles(Array.from(e.target.files));
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -67,16 +90,7 @@ export const NewInspectionPage: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const newFiles = Array.from(e.dataTransfer.files);
-      const newImages = newFiles.map(file => {
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-        if (!validTypes.includes(file.type)) return null;
-        if (file.size > 20 * 1024 * 1024) return null;
-        return { blob: file, previewUrl: URL.createObjectURL(file) };
-      }).filter(Boolean) as { blob: File | Blob; previewUrl: string }[];
-      
-      setCapturedImages(prev => [...prev, ...newImages]);
-      setErrorMsg(null);
+      processIncomingFiles(Array.from(e.dataTransfer.files));
     }
   };
 
@@ -112,6 +126,40 @@ export const NewInspectionPage: React.FC = () => {
 
   const confirmResults = () => {
     if (auditData?.scanId) {
+      // Save any user adjustments into the stored inspection
+      const existing = getInspectionById(auditData.scanId);
+      if (existing) {
+        const updated = {
+          ...existing,
+          product: {
+            ...existing.product,
+            name: editableExtracted.commodity_name || existing.product.name,
+            manufacturer: editableExtracted.manufacturer_name || existing.product.manufacturer
+          },
+          declarations: existing.declarations.map(dec => {
+            if (dec.type === 'MANUFACTURER_PACKER' && (editableExtracted.manufacturer_name || editableExtracted.manufacturer_address)) {
+              return { ...dec, extractedText: [editableExtracted.manufacturer_name, editableExtracted.manufacturer_address].filter(Boolean).join(' - ') };
+            }
+            if (dec.type === 'PRODUCT_NAME' && editableExtracted.commodity_name) {
+              return { ...dec, extractedText: editableExtracted.commodity_name };
+            }
+            if (dec.type === 'NET_QUANTITY' && (editableExtracted.net_quantity_value || editableExtracted.net_quantity_unit)) {
+              return { ...dec, extractedText: [editableExtracted.net_quantity_value, editableExtracted.net_quantity_unit].filter(Boolean).join(' ') };
+            }
+            if (dec.type === 'MRP' && (editableExtracted.mrp_raw_text || editableExtracted.mrp_value)) {
+              return { ...dec, extractedText: editableExtracted.mrp_raw_text || `₹ ${editableExtracted.mrp_value}` };
+            }
+            if (dec.type === 'DATE_INFORMATION' && editableExtracted.month_year_of_manufacture) {
+              return { ...dec, extractedText: editableExtracted.month_year_of_manufacture };
+            }
+            if (dec.type === 'CONSUMER_CARE' && (editableExtracted.consumer_care_email || editableExtracted.consumer_care_phone)) {
+              return { ...dec, extractedText: [editableExtracted.consumer_care_email, editableExtracted.consumer_care_phone, editableExtracted.consumer_care_address].filter(Boolean).join(', ') };
+            }
+            return dec;
+          })
+        };
+        addInspection(updated);
+      }
       navigate(`/inspections/${auditData.scanId}`);
     } else {
       navigate('/inspections');

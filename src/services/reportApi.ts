@@ -55,7 +55,7 @@ export async function generateReport(inspectionId: string): Promise<Report> {
   throw new Error('Real API not configured');
 }
 
-export async function exportReport(id: string, format: 'pdf' | 'docx'): Promise<Blob> {
+export async function exportReport(id: string, format: 'pdf' | 'docx' | 'json'): Promise<Blob> {
   if (USE_MOCKS) {
     await delay(1000);
     // Return a mock blob - in real app, backend would generate the file

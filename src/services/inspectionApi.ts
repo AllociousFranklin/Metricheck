@@ -1,6 +1,7 @@
 import type { Inspection, CreateInspectionRequest, AnalysisResult, Declaration } from '@/types';
 import { delay, USE_MOCKS } from './api';
 import { mockInspections, getInspectionById, addInspection } from '@/mocks/inspections';
+import { useAuthStore } from '@/stores/authStore';
 
 // Backend Integration Types
 export interface ComplianceCheck {
@@ -46,6 +47,60 @@ export interface AuditResponse {
   reportHtml?: string;
 }
 
+/**
+ * Compress an image to stay within Vercel's 4.5MB payload limit.
+ * Resizes to max 1200px on longest edge and compresses to JPEG quality 0.7.
+ */
+async function compressImage(fileOrBlob: File | Blob | string): Promise<string> {
+  // If already a data URL string, compress it too
+  if (typeof fileOrBlob === 'string' && fileOrBlob.startsWith('data:')) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = () => resolve(fileOrBlob); // fallback to original
+      img.src = fileOrBlob;
+    });
+  }
+  if (typeof fileOrBlob === 'string') return fileOrBlob;
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(fileOrBlob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      const MAX_DIM = 1200;
+      let w = img.width, h = img.height;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 async function fileToDataUrl(fileOrBlob: File | Blob | string): Promise<string> {
   if (typeof fileOrBlob === 'string') return fileOrBlob;
   return new Promise((resolve, reject) => {
@@ -57,279 +112,208 @@ async function fileToDataUrl(fileOrBlob: File | Blob | string): Promise<string> 
 }
 
 export async function runLegalMetrologyAudit(images: (File | Blob | string)[]): Promise<AuditResponse> {
-  const dataUrls = await Promise.all(images.map(fileToDataUrl));
+  const compressedDataUrls = await Promise.all(images.map(compressImage));
   
-  try {
-    const response = await fetch('/api/audit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ images: dataUrls }),
-    });
-    
-    if (response.ok) {
-      const report = await response.json();
-      
-      const auditRes: AuditResponse = {
-        scanId: report.scan_id || `LM-${Date.now()}`,
-        timestamp: report.timestamp || new Date().toISOString(),
-        overallStatus: report.summary?.overall_compliant
-          ? 'FULLY COMPLIANT'
-          : report.summary?.failed > 0
-          ? 'NON-COMPLIANT'
-          : 'NEEDS REVIEW',
-        summary: {
-          passed: report.summary?.passed ?? 6,
-          failed: report.summary?.failed ?? 0,
-          warnings: report.summary?.warnings ?? 0,
-        },
-        checks: (report.compliance || []).map((c: any) => ({
-          ruleName: c.label || c.id,
-          status: c.status === 'PASS' ? 'PASS' : c.status === 'FAIL' ? 'FAIL' : 'WARNING',
-          ruleReference: c.rule_ref || '',
-          explanation: c.message || '',
-          detectedValue: c.detected_value || ''
-        })),
-        extractedData: {
-          manufacturer_name: report.extracted_fields?.manufacturer_name?.value || 'Britannia Industries Ltd.',
-          manufacturer_address: report.extracted_fields?.manufacturer_address?.value || '5/1A Hungerford Street, Kolkata, West Bengal - 700017',
-          packer_name: report.extracted_fields?.packer_name?.value || '',
-          packer_address: report.extracted_fields?.packer_address?.value || '',
-          importer_name: report.extracted_fields?.importer_name?.value || '',
-          importer_address: report.extracted_fields?.importer_address?.value || '',
-          commodity_name: report.product?.commodity_name || report.extracted_fields?.commodity_name?.value || 'Biscuits',
-          net_quantity_value: String(report.extracted_fields?.net_quantity_value?.value || '200'),
-          net_quantity_unit: report.extracted_fields?.net_quantity_unit?.value || 'g',
-          mrp_raw_text: report.extracted_fields?.mrp_raw_text?.value || 'MRP Rs 30.00 incl. of all taxes',
-          mrp_value: String(report.extracted_fields?.mrp_value?.value || '30.00'),
-          month_year_of_manufacture: report.extracted_fields?.month_year_of_manufacture?.value || '08/2026',
-          consumer_care_name: report.extracted_fields?.consumer_care_name?.value || 'Consumer Care Manager',
-          consumer_care_address: report.extracted_fields?.consumer_care_address?.value || 'Britannia Industries Ltd., Prestige Shantiniketan, Bengaluru - 560048',
-          consumer_care_phone: report.extracted_fields?.consumer_care_phone?.value || '1800-425-4449',
-          consumer_care_email: report.extracted_fields?.consumer_care_email?.value || 'feedback@britindia.com',
-          dimensions: report.extracted_fields?.dimensions?.value || '',
-          country_of_origin: report.extracted_fields?.country_of_origin?.value || 'India',
-        }
-      };
-
-      const newInspection: Inspection = {
-        id: auditRes.scanId,
-        product: {
-          id: `prod-${Date.now()}`,
-          name: auditRes.extractedData.commodity_name || 'Packaged Commodity',
-          category: 'Packaged Goods',
-          manufacturer: auditRes.extractedData.manufacturer_name || 'Manufacturer',
-          inspectionCount: 1,
-          lastInspectionDate: new Date().toISOString(),
-          lastComplianceScore: 100,
-          lastStatus: 'COMPLIANT',
-        },
-        inspectorId: 'usr-001',
-        inspectorName: 'Auditor',
-        status: report.summary?.overall_compliant ? 'COMPLIANT' : 'NON_COMPLIANT',
-        complianceScore: Math.round(((report.summary?.passed ?? 6) / ((report.summary?.passed ?? 6) + (report.summary?.failed ?? 0) + (report.summary?.warnings ?? 0))) * 100),
-        confidence: 0.95,
-        createdAt: auditRes.timestamp,
-        updatedAt: auditRes.timestamp,
-        timeline: [
-          { id: `tl-1-${Date.now()}`, type: 'created', label: 'Scan Initiated', timestamp: auditRes.timestamp },
-          { id: `tl-2-${Date.now()}`, type: 'analysis_completed', label: 'AI Audit Completed', timestamp: auditRes.timestamp },
-        ],
-        declarations: [
-          {
-            id: `dec-mfg-${Date.now()}`,
-            type: 'MANUFACTURER_PACKER',
-            label: 'Manufacturer / Packer Declaration',
-            status: 'PASS',
-            confidence: 0.96,
-            presenceStatus: 'PRESENT',
-            correctnessStatus: 'PASS',
-            completenessStatus: 'PASS',
-            placementStatus: 'PASS',
-            readabilityStatus: 'PASS',
-            fontSizeStatus: 'PASS',
-            extractedText: `${auditRes.extractedData.manufacturer_name || ''} - ${auditRes.extractedData.manufacturer_address || ''}`,
-          },
-          {
-            id: `dec-com-${Date.now()}`,
-            type: 'PRODUCT_NAME',
-            label: 'Common / Generic Name',
-            status: 'PASS',
-            confidence: 0.98,
-            presenceStatus: 'PRESENT',
-            correctnessStatus: 'PASS',
-            completenessStatus: 'PASS',
-            placementStatus: 'PASS',
-            readabilityStatus: 'PASS',
-            fontSizeStatus: 'PASS',
-            extractedText: auditRes.extractedData.commodity_name || 'Commodity Name',
-          },
-          {
-            id: `dec-qty-${Date.now()}`,
-            type: 'NET_QUANTITY',
-            label: 'Net Quantity Declaration',
-            status: 'PASS',
-            confidence: 0.95,
-            presenceStatus: 'PRESENT',
-            correctnessStatus: 'PASS',
-            completenessStatus: 'PASS',
-            placementStatus: 'PASS',
-            readabilityStatus: 'PASS',
-            fontSizeStatus: 'PASS',
-            extractedText: `${auditRes.extractedData.net_quantity_value || ''} ${auditRes.extractedData.net_quantity_unit || ''}`,
-          },
-          {
-            id: `dec-mrp-${Date.now()}`,
-            type: 'MRP',
-            label: 'Retail Sale Price (MRP)',
-            status: auditRes.extractedData.mrp_raw_text?.toLowerCase().includes('tax') ? 'PASS' : 'REVIEW',
-            confidence: 0.94,
-            presenceStatus: 'PRESENT',
-            correctnessStatus: 'PASS',
-            completenessStatus: 'PASS',
-            placementStatus: 'PASS',
-            readabilityStatus: 'PASS',
-            fontSizeStatus: 'PASS',
-            extractedText: auditRes.extractedData.mrp_raw_text || `₹ ${auditRes.extractedData.mrp_value || ''}`,
-          },
-          {
-            id: `dec-date-${Date.now()}`,
-            type: 'DATE_INFORMATION',
-            label: 'Month & Year of Manufacture',
-            status: 'PASS',
-            confidence: 0.93,
-            presenceStatus: 'PRESENT',
-            correctnessStatus: 'PASS',
-            completenessStatus: 'PASS',
-            placementStatus: 'PASS',
-            readabilityStatus: 'PASS',
-            fontSizeStatus: 'PASS',
-            extractedText: auditRes.extractedData.month_year_of_manufacture || '08/2026',
-          },
-          {
-            id: `dec-care-${Date.now()}`,
-            type: 'CONSUMER_CARE',
-            label: 'Consumer Care Details',
-            status: 'PASS',
-            confidence: 0.92,
-            presenceStatus: 'PRESENT',
-            correctnessStatus: 'PASS',
-            completenessStatus: 'PASS',
-            placementStatus: 'PASS',
-            readabilityStatus: 'PASS',
-            fontSizeStatus: 'PASS',
-            extractedText: `${auditRes.extractedData.consumer_care_email || ''} ${auditRes.extractedData.consumer_care_phone || ''}`,
-          }
-        ],
-        violations: (report.compliance || []).filter((c: any) => c.status === 'FAIL').map((v: any, idx: number) => ({
-          id: `viol-${idx}-${Date.now()}`,
-          type: 'MISSING_MANDATORY_FIELD',
-          severity: 'HIGH',
-          description: v.message || v.label,
-          inspectionId: auditRes.scanId,
-          field: v.id,
-          confidence: 0.95,
-          reviewStatus: 'PENDING',
-          createdAt: auditRes.timestamp
-        })),
-        images: dataUrls.map((url, idx) => ({
-          id: `img-${idx}-${Date.now()}`,
-          url,
-          category: (['front', 'side', 'back', 'top', 'bottom'] as any)[idx % 5] || 'front',
-          fileName: `package_view_${idx + 1}.jpg`,
-          fileSize: 150000
-        }))
-      };
-
-      addInspection(newInspection);
-      return auditRes;
-    }
-  } catch (error) {
-    console.warn("Backend /api/audit unavailable, generating rich client report:", error);
+  const response = await fetch('/api/audit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ images: compressedDataUrls }),
+  });
+  
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.error || `Server Audit Error (${response.status}): ${response.statusText}`);
   }
-
-  // Fallback rich report
-  await delay(1500);
-  const fallbackId = `LM-${Date.now().toString(36).toUpperCase()}`;
-  const fallbackRes: AuditResponse = {
-    scanId: fallbackId,
-    timestamp: new Date().toISOString(),
-    overallStatus: 'FULLY COMPLIANT',
-    summary: { passed: 6, failed: 0, warnings: 0 },
-    extractedData: {
-      manufacturer_name: 'Britannia Industries Ltd.',
-      manufacturer_address: '5/1A Hungerford Street, Kolkata, West Bengal - 700017',
-      commodity_name: 'Biscuits',
-      net_quantity_value: '200',
-      net_quantity_unit: 'g',
-      mrp_raw_text: 'MRP Rs 30.00 incl. of all taxes',
-      mrp_value: '30.00',
-      month_year_of_manufacture: '08/2026',
-      consumer_care_email: 'feedback@britindia.com',
-      consumer_care_phone: '1800-425-4449',
-      consumer_care_address: 'Britannia Industries Ltd., Prestige Shantiniketan, Bengaluru - 560048',
-      country_of_origin: 'India'
+  
+  const report = await response.json();
+  const currentUser = useAuthStore.getState().user;
+  
+  const auditRes: AuditResponse = {
+    scanId: report.scan_id || `LM-${Date.now()}`,
+    timestamp: report.timestamp || new Date().toISOString(),
+    overallStatus: report.summary?.overall_compliant
+      ? 'FULLY COMPLIANT'
+      : (report.summary?.failed ?? 0) > 0
+      ? 'NON-COMPLIANT'
+      : 'NEEDS REVIEW',
+    summary: {
+      passed: report.summary?.passed ?? 0,
+      failed: report.summary?.failed ?? 0,
+      warnings: report.summary?.warnings ?? 0,
     },
-    checks: [
-      { ruleName: 'Manufacturer / Packer / Importer', status: 'PASS', ruleReference: 'Rule 6(1)(a)', explanation: 'Name and complete address verified on package.', detectedValue: 'Britannia Industries Ltd.' },
-      { ruleName: 'Common / Generic Name', status: 'PASS', ruleReference: 'Rule 6(1)(b)', explanation: 'Commodity name declared clearly.', detectedValue: 'Biscuits' },
-      { ruleName: 'Net Quantity Declaration', status: 'PASS', ruleReference: 'Rule 6(1)(c)', explanation: 'Standard metric unit verified.', detectedValue: '200 g' },
-      { ruleName: 'Month & Year of Manufacture', status: 'PASS', ruleReference: 'Rule 6(1)(d)', explanation: 'Manufacturing date valid.', detectedValue: '08/2026' },
-      { ruleName: 'Retail Sale Price (MRP)', status: 'PASS', ruleReference: 'Rule 6(1)(e)', explanation: 'Inclusive of all taxes verified.', detectedValue: 'MRP Rs 30.00 incl. of all taxes' },
-      { ruleName: 'Consumer Care Details', status: 'PASS', ruleReference: 'Rule 6(2)', explanation: 'Consumer care contact channels verified.', detectedValue: 'feedback@britindia.com, 1800-425-4449' },
-    ],
+    checks: (report.compliance || []).map((c: any) => ({
+      ruleName: c.label || c.id || 'Statutory Check',
+      status: c.status === 'PASS' ? 'PASS' : c.status === 'FAIL' ? 'FAIL' : 'WARNING',
+      ruleReference: c.rule_ref || '',
+      explanation: c.message || '',
+      detectedValue: c.detected_value || ''
+    })),
+    extractedData: {
+      manufacturer_name: report.extracted_fields?.manufacturer_name?.value || '',
+      manufacturer_address: report.extracted_fields?.manufacturer_address?.value || '',
+      packer_name: report.extracted_fields?.packer_name?.value || '',
+      packer_address: report.extracted_fields?.packer_address?.value || '',
+      importer_name: report.extracted_fields?.importer_name?.value || '',
+      importer_address: report.extracted_fields?.importer_address?.value || '',
+      commodity_name: report.product?.commodity_name || report.extracted_fields?.commodity_name?.value || '',
+      net_quantity_value: report.extracted_fields?.net_quantity_value?.value ? String(report.extracted_fields?.net_quantity_value?.value) : '',
+      net_quantity_unit: report.extracted_fields?.net_quantity_unit?.value || '',
+      mrp_raw_text: report.extracted_fields?.mrp_raw_text?.value || '',
+      mrp_value: report.extracted_fields?.mrp_value?.value ? String(report.extracted_fields?.mrp_value?.value) : '',
+      month_year_of_manufacture: report.extracted_fields?.month_year_of_manufacture?.value || '',
+      consumer_care_name: report.extracted_fields?.consumer_care_name?.value || '',
+      consumer_care_address: report.extracted_fields?.consumer_care_address?.value || '',
+      consumer_care_phone: report.extracted_fields?.consumer_care_phone?.value || '',
+      consumer_care_email: report.extracted_fields?.consumer_care_email?.value || '',
+      dimensions: report.extracted_fields?.dimensions?.value || '',
+      country_of_origin: report.extracted_fields?.country_of_origin?.value || '',
+    }
   };
 
-  const fallbackInspection: Inspection = {
-    id: fallbackId,
+  const totalChecks = (report.summary?.passed ?? 0) + (report.summary?.failed ?? 0) + (report.summary?.warnings ?? 0);
+  const calculatedScore = totalChecks > 0 ? Math.round(((report.summary?.passed ?? 0) / totalChecks) * 100) : 100;
+
+  // Helper to find compliance status for declaration mapping
+  const findCheckStatus = (ruleIdSub: string): 'PASS' | 'FAIL' | 'REVIEW' => {
+    const matched = (report.compliance || []).find((c: any) => 
+      c.id?.toLowerCase().includes(ruleIdSub.toLowerCase()) || 
+      c.rule_ref?.toLowerCase().includes(ruleIdSub.toLowerCase())
+    );
+    if (!matched) return 'PASS';
+    return matched.status === 'PASS' ? 'PASS' : matched.status === 'FAIL' ? 'FAIL' : 'REVIEW';
+  };
+
+  const newInspection: Inspection = {
+    id: auditRes.scanId,
     product: {
       id: `prod-${Date.now()}`,
-      name: 'Biscuits',
-      category: 'Food Products',
-      manufacturer: 'Britannia Industries Ltd.',
+      name: auditRes.extractedData.commodity_name || 'Packaged Commodity',
+      category: 'Packaged Goods',
+      manufacturer: auditRes.extractedData.manufacturer_name || 'Declared Entity',
       inspectionCount: 1,
       lastInspectionDate: new Date().toISOString(),
-      lastComplianceScore: 100,
-      lastStatus: 'COMPLIANT',
+      lastComplianceScore: calculatedScore,
+      lastStatus: report.summary?.overall_compliant ? 'COMPLIANT' : 'NON_COMPLIANT',
     },
-    inspectorId: 'usr-001',
-    inspectorName: 'Auditor',
-    status: 'COMPLIANT',
-    complianceScore: 100,
-    confidence: 0.98,
-    createdAt: fallbackRes.timestamp,
-    updatedAt: fallbackRes.timestamp,
+    inspectorId: currentUser?.id || 'usr-inspector',
+    inspectorName: currentUser?.name || 'Field Auditor',
+    status: report.summary?.overall_compliant ? 'COMPLIANT' : 'NON_COMPLIANT',
+    complianceScore: calculatedScore,
+    confidence: report.analysis_confidence || 0.95,
+    createdAt: auditRes.timestamp,
+    updatedAt: auditRes.timestamp,
     timeline: [
-      { id: `tl-1-${Date.now()}`, type: 'created', label: 'Scan Initiated', timestamp: fallbackRes.timestamp },
-      { id: `tl-2-${Date.now()}`, type: 'analysis_completed', label: 'AI Audit Completed', timestamp: fallbackRes.timestamp },
+      { id: `tl-1-${Date.now()}`, type: 'created', label: 'Scan Initiated', timestamp: auditRes.timestamp },
+      { id: `tl-2-${Date.now()}`, type: 'analysis_completed', label: 'AI Audit Completed', timestamp: auditRes.timestamp },
     ],
     declarations: [
       {
         id: `dec-mfg-${Date.now()}`,
         type: 'MANUFACTURER_PACKER',
-        label: 'Manufacturer Declaration',
-        status: 'PASS',
-        confidence: 0.98,
-        presenceStatus: 'PRESENT',
-        correctnessStatus: 'PASS',
+        label: 'Manufacturer / Packer Declaration',
+        status: findCheckStatus('manufacturer'),
+        confidence: 0.95,
+        presenceStatus: auditRes.extractedData.manufacturer_name ? 'PRESENT' : 'MISSING',
+        correctnessStatus: findCheckStatus('manufacturer') === 'FAIL' ? 'FAIL' : 'PASS',
+        completenessStatus: auditRes.extractedData.manufacturer_address ? 'PASS' : 'FAIL',
+        placementStatus: 'PASS',
+        readabilityStatus: 'PASS',
+        fontSizeStatus: 'PASS',
+        extractedText: [auditRes.extractedData.manufacturer_name, auditRes.extractedData.manufacturer_address].filter(Boolean).join(' - ') || 'Not detected',
+      },
+      {
+        id: `dec-com-${Date.now()}`,
+        type: 'PRODUCT_NAME',
+        label: 'Common / Generic Name',
+        status: findCheckStatus('generic_name'),
+        confidence: 0.96,
+        presenceStatus: auditRes.extractedData.commodity_name ? 'PRESENT' : 'MISSING',
+        correctnessStatus: findCheckStatus('generic_name') === 'FAIL' ? 'FAIL' : 'PASS',
         completenessStatus: 'PASS',
         placementStatus: 'PASS',
         readabilityStatus: 'PASS',
         fontSizeStatus: 'PASS',
-        extractedText: 'Britannia Industries Ltd. - Kolkata',
+        extractedText: auditRes.extractedData.commodity_name || 'Not detected',
+      },
+      {
+        id: `dec-qty-${Date.now()}`,
+        type: 'NET_QUANTITY',
+        label: 'Net Quantity Declaration',
+        status: findCheckStatus('net_quantity'),
+        confidence: 0.95,
+        presenceStatus: auditRes.extractedData.net_quantity_value ? 'PRESENT' : 'MISSING',
+        correctnessStatus: findCheckStatus('net_quantity') === 'FAIL' ? 'FAIL' : 'PASS',
+        completenessStatus: 'PASS',
+        placementStatus: 'PASS',
+        readabilityStatus: 'PASS',
+        fontSizeStatus: 'PASS',
+        extractedText: [auditRes.extractedData.net_quantity_value, auditRes.extractedData.net_quantity_unit].filter(Boolean).join(' ') || 'Not detected',
+      },
+      {
+        id: `dec-mrp-${Date.now()}`,
+        type: 'MRP',
+        label: 'Retail Sale Price (MRP)',
+        status: findCheckStatus('mrp'),
+        confidence: 0.94,
+        presenceStatus: auditRes.extractedData.mrp_raw_text || auditRes.extractedData.mrp_value ? 'PRESENT' : 'MISSING',
+        correctnessStatus: findCheckStatus('mrp') === 'FAIL' ? 'FAIL' : 'PASS',
+        completenessStatus: 'PASS',
+        placementStatus: 'PASS',
+        readabilityStatus: 'PASS',
+        fontSizeStatus: 'PASS',
+        extractedText: auditRes.extractedData.mrp_raw_text || (auditRes.extractedData.mrp_value ? `₹ ${auditRes.extractedData.mrp_value}` : 'Not detected'),
+      },
+      {
+        id: `dec-date-${Date.now()}`,
+        type: 'DATE_INFORMATION',
+        label: 'Month & Year of Manufacture',
+        status: findCheckStatus('date'),
+        confidence: 0.93,
+        presenceStatus: auditRes.extractedData.month_year_of_manufacture ? 'PRESENT' : 'MISSING',
+        correctnessStatus: findCheckStatus('date') === 'FAIL' ? 'FAIL' : 'PASS',
+        completenessStatus: 'PASS',
+        placementStatus: 'PASS',
+        readabilityStatus: 'PASS',
+        fontSizeStatus: 'PASS',
+        extractedText: auditRes.extractedData.month_year_of_manufacture || 'Not detected',
+      },
+      {
+        id: `dec-care-${Date.now()}`,
+        type: 'CONSUMER_CARE',
+        label: 'Consumer Care Details',
+        status: findCheckStatus('consumer_care'),
+        confidence: 0.92,
+        presenceStatus: (auditRes.extractedData.consumer_care_email || auditRes.extractedData.consumer_care_phone) ? 'PRESENT' : 'MISSING',
+        correctnessStatus: findCheckStatus('consumer_care') === 'FAIL' ? 'FAIL' : 'PASS',
+        completenessStatus: 'PASS',
+        placementStatus: 'PASS',
+        readabilityStatus: 'PASS',
+        fontSizeStatus: 'PASS',
+        extractedText: [auditRes.extractedData.consumer_care_email, auditRes.extractedData.consumer_care_phone, auditRes.extractedData.consumer_care_address].filter(Boolean).join(', ') || 'Not detected',
       }
     ],
-    violations: [],
-    images: dataUrls.map((url, idx) => ({
+    violations: (report.compliance || []).filter((c: any) => c.status === 'FAIL').map((v: any, idx: number) => ({
+      id: `viol-${idx}-${Date.now()}`,
+      type: 'MISSING_MANDATORY_FIELD',
+      severity: 'HIGH',
+      description: v.message || v.label,
+      inspectionId: auditRes.scanId,
+      field: v.id,
+      confidence: 0.95,
+      reviewStatus: 'PENDING',
+      createdAt: auditRes.timestamp
+    })),
+    images: compressedDataUrls.map((url, idx) => ({
       id: `img-${idx}-${Date.now()}`,
       url,
       category: (['front', 'side', 'back', 'top', 'bottom'] as any)[idx % 5] || 'front',
       fileName: `package_view_${idx + 1}.jpg`,
-      fileSize: 150000
+      fileSize: Math.round(url.length * 0.75)
     }))
   };
 
-  addInspection(fallbackInspection);
-  return fallbackRes;
+  addInspection(newInspection);
+  return auditRes;
 }
 
 export async function getInspections(filters?: {

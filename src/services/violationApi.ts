@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Violation } from '@/types';
 import { delay, USE_MOCKS } from './api';
 import { mockViolations, getViolationById as getMockViolation } from '@/mocks/violations';

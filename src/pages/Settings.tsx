@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
+import { APP_CONFIG } from '@/app/config';
 
 export const SettingsPage: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -68,7 +69,7 @@ export const SettingsPage: React.FC = () => {
               </div>
               <div className="text-right">
                 <span className="inline-block px-2 py-1 bg-white border-l-4 border-l-success text-success text-xs font-bold rounded mb-1">ACTIVE</span>
-                <p className="text-sm font-medium">v2024.1</p>
+                <p className="text-sm font-medium">v{APP_CONFIG.ruleSetVersion}</p>
               </div>
             </div>
             <div className="flex justify-between items-center py-2">
@@ -76,7 +77,7 @@ export const SettingsPage: React.FC = () => {
                 <p className="font-medium text-neutral-900">Last System Update</p>
                 <p className="text-sm text-neutral-500">Platform and vision model updates.</p>
               </div>
-              <p className="text-sm text-neutral-600">October 15, 2023</p>
+              <p className="text-sm text-neutral-600">{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
           </div>
         </CardContent>

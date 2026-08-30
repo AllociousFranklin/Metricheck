@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/audit.js": {
+      "includeFiles": "legal_metrology_rules.json"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

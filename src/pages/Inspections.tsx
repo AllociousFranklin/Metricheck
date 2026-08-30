@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useDebouncedValue } from '@/utils/useDebounce';
 import { Plus, Search, Filter, Eye } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -13,10 +14,11 @@ export const InspectionsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['inspections', statusFilter, searchTerm],
-    queryFn: () => getInspections({ status: statusFilter !== 'All' ? statusFilter : undefined, search: searchTerm }),
+    queryKey: ['inspections', statusFilter, debouncedSearch],
+    queryFn: () => getInspections({ status: statusFilter !== 'All' ? statusFilter : undefined, search: debouncedSearch }),
   });
 
   return (

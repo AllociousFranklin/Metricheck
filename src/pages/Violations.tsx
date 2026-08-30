@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useDebouncedValue } from '@/utils/useDebounce';
 import { Search, Filter, AlertTriangle, Eye, Info } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -14,13 +15,14 @@ export const ViolationsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['violations', severityFilter, statusFilter, searchTerm],
+    queryKey: ['violations', severityFilter, statusFilter, debouncedSearch],
     queryFn: () => getViolations({ 
       severity: severityFilter !== 'All' ? severityFilter : undefined,
       status: statusFilter !== 'All' ? statusFilter : undefined,
-      search: searchTerm 
+      search: debouncedSearch 
     }),
   });
 

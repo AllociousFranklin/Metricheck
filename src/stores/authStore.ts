@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { create } from 'zustand';
 import type { User, LoginCredentials } from '@/types';
 import * as authApi from '@/services/authApi';

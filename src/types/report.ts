@@ -5,19 +5,30 @@ export interface Report {
   inspectionId: string;
   productName: string;
   productId: string;
+  manufacturer?: string;
+  category?: string;
   status: ReportStatus;
   assessmentStatus: string;
+  assessmentResult?: string;
   complianceScore: number;
+  score?: number;
   passedChecks: number;
   failedChecks: number;
   reviewChecks: number;
   totalChecks: number;
   generatedAt: string;
+  generatedDate?: string;
+  inspectionDate?: string;
   generatedBy: string;
   inspectorName: string;
   findings: ReportFinding[];
   evidenceImages: string[];
   ruleSetVersion: string;
+  summary?: {
+    passedChecks: number;
+    totalFindings: number;
+    pendingReviews: number;
+  };
 }
 
 export interface ReportFinding {
