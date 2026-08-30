@@ -71,13 +71,15 @@ export async function loginWithEmail(email: string, password: string): Promise<U
 
 export async function login(): Promise<void> {
   if (!isSupabaseConfigured()) {
-    throw new Error('Supabase is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env to enable Google OAuth, or use Email / Quick Demo login above.');
+    throw new Error('Supabase is not configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable Google OAuth, or use Email / Quick Demo login above.');
   }
+
+  const redirectUrl = window.location.origin;
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin
+      redirectTo: redirectUrl
     }
   });
 
@@ -126,10 +128,10 @@ export async function getCurrentUser(): Promise<User | null> {
       return {
         id: session.user.id,
         email: session.user.email || '',
-        name: profile?.full_name || session.user.user_metadata?.full_name || 'User',
-        role: profile?.role || 'INSPECTOR',
-        department: 'Inspection',
-        avatar: profile?.avatar_url || session.user.user_metadata?.avatar_url,
+        name: profile?.full_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Inspector',
+        role: (profile?.role || 'INSPECTOR') as UserRole,
+        department: profile?.department || 'Legal Metrology Inspection Division',
+        avatar: profile?.avatar_url || session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
       };
     } catch (err) {
       console.warn('Supabase auth getSession check failed:', err);
