@@ -1,7 +1,6 @@
 import type { Inspection, CreateInspectionRequest, AnalysisResult, Declaration } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { mockInspections } from '@/mocks/inspections';
 
 // Helper to convert Data URL to Blob for Supabase Storage
 function dataURLtoBlob(dataurl: string) {
@@ -136,10 +135,14 @@ export async function runLegalMetrologyAudit(images: (File | Blob | string)[]): 
   
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.error || `Server Audit Error (${response.status}): ${response.statusText}`);
+    throw new Error(errorBody.error || errorBody.details || `Server Audit Error (${response.status}): ${response.statusText}`);
   }
   
   const report = await response.json();
+  if (report.error) {
+    throw new Error(report.error || report.details || 'Audit analysis failed');
+  }
+
   const currentUser = useAuthStore.getState().user;
   
   const auditRes: AuditResponse = {
@@ -380,15 +383,8 @@ export async function runLegalMetrologyAudit(images: (File | Blob | string)[]): 
     }))
   };
 
-  // Always keep in active in-memory store
-  mockInspections.unshift(newInspection);
-
-  // Persist to Supabase if session active
-  try {
-    await persistInspectionToSupabase(newInspection);
-  } catch (err) {
-    console.warn('Could not persist inspection to Supabase (local session active):', err);
-  }
+  // Persist to Supabase
+  await persistInspectionToSupabase(newInspection);
   return auditRes;
 }
 
@@ -495,131 +491,110 @@ export async function getInspections(filters?: {
   dateFrom?: string;
   dateTo?: string;
 }): Promise<Inspection[]> {
-  try {
-    let query = supabase
-      .from('inspections')
-      .select('*, products(*)');
+  let query = supabase
+    .from('inspections')
+    .select('*, products(*)');
 
-    if (filters?.status && filters.status !== 'All') {
-      query = query.eq('status', filters.status);
-    }
-    if (filters?.search) {
-      const q = filters.search;
-      query = query.or(`id.ilike.%${q}%,product_name.ilike.%${q}%,product_manufacturer.ilike.%${q}%`);
-    }
-
-    query = query.order('created_at', { ascending: false });
-
-    const { data, error } = await query;
-    if (!error && data && data.length > 0) {
-      return data.map((i: any) => ({
-        id: i.id,
-        status: i.status,
-        complianceScore: i.compliance_score,
-        confidence: i.confidence,
-        createdAt: i.created_at,
-        updatedAt: i.updated_at,
-        inspectorId: i.user_id,
-        inspectorName: 'Inspector',
-        product: {
-          id: i.products?.id || '',
-          name: i.products?.name || i.product_name || 'Packaged Product',
-          category: i.products?.category || 'Packaged Commodity',
-          manufacturer: i.products?.manufacturer || i.product_manufacturer || 'Declared Entity',
-          inspectionCount: i.products?.inspection_count || 1,
-        },
-        images: [],
-        declarations: [],
-        violations: [],
-        timeline: [],
-      }));
-    }
-  } catch (err) {
-    console.warn('Supabase getInspections fallback:', err);
-  }
-
-  // Graceful fallback to mockInspections
-  let results = [...mockInspections];
   if (filters?.status && filters.status !== 'All') {
-    results = results.filter(i => i.status === filters.status);
+    query = query.eq('status', filters.status);
   }
   if (filters?.search) {
-    const q = filters.search.toLowerCase();
-    results = results.filter(i =>
-      i.id.toLowerCase().includes(q) ||
-      i.product.name.toLowerCase().includes(q) ||
-      i.product.manufacturer.toLowerCase().includes(q)
-    );
+    const q = filters.search;
+    query = query.or(`id.ilike.%${q}%,product_name.ilike.%${q}%,product_manufacturer.ilike.%${q}%`);
   }
-  return results;
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('getInspections query error:', error);
+    return [];
+  }
+
+  return (data || []).map((i: any) => ({
+    id: i.id,
+    status: i.status,
+    complianceScore: i.compliance_score,
+    confidence: i.confidence,
+    createdAt: i.created_at,
+    updatedAt: i.updated_at,
+    inspectorId: i.user_id,
+    inspectorName: 'Inspector',
+    product: {
+      id: i.products?.id || '',
+      name: i.products?.name || i.product_name || 'Packaged Product',
+      category: i.products?.category || 'Packaged Commodity',
+      manufacturer: i.products?.manufacturer || i.product_manufacturer || 'Declared Entity',
+      inspectionCount: i.products?.inspection_count || 1,
+    },
+    images: [],
+    declarations: [],
+    violations: [],
+    timeline: [],
+  }));
 }
 
 export async function getInspection(id: string): Promise<Inspection> {
-  try {
-    const { data: i, error } = await supabase
-      .from('inspections')
-      .select(`
-        *,
-        products(*),
-        inspection_images(*),
-        declarations(*),
-        violations(*)
-      `)
-      .eq('id', id)
-      .single();
+  const { data: i, error } = await supabase
+    .from('inspections')
+    .select(`
+      *,
+      products(*),
+      inspection_images(*),
+      declarations(*),
+      violations(*)
+    `)
+    .eq('id', id)
+    .single();
 
-    if (!error && i) {
-      return {
-        id: i.id,
-        status: i.status,
-        complianceScore: i.compliance_score,
-        confidence: i.confidence,
-        createdAt: i.created_at,
-        updatedAt: i.updated_at,
-        inspectorId: i.user_id,
-        inspectorName: 'Inspector',
-        product: {
-          id: i.products?.id || '',
-          name: i.products?.name || i.product_name,
-          category: i.products?.category || '',
-          manufacturer: i.products?.manufacturer || i.product_manufacturer,
-          inspectionCount: i.products?.inspection_count || 1,
-        },
-        images: (i.inspection_images || []).map((img: any) => ({
-          id: img.id,
-          url: supabase.storage.from('inspection-images').getPublicUrl(img.storage_path).data.publicUrl,
-          category: img.category,
-          fileName: img.file_name,
-          fileSize: img.file_size
-        })),
-        declarations: (i.declarations || []).map((d: any) => ({
-          id: d.id,
-          type: d.type,
-          label: d.label,
-          extractedText: d.extracted_text,
-          status: d.status,
-          confidence: d.confidence,
-        })),
-        violations: (i.violations || []).map((v: any) => ({
-          id: v.id,
-          inspectionId: v.inspection_id,
-          type: v.type,
-          severity: v.severity,
-          field: v.field,
-          description: v.description,
-          confidence: v.confidence,
-          reviewStatus: v.review_status,
-          reviewNote: v.review_note
-        })),
-        timeline: []
-      };
-    }
-  } catch (err) {
-    console.warn(`Supabase getInspection(${id}) fallback:`, err);
+  if (error || !i) {
+    throw new Error(`Inspection ${id} not found`);
   }
 
-  const found = mockInspections.find(i => i.id === id) || mockInspections[0];
-  return found;
+  return {
+    id: i.id,
+    status: i.status,
+    complianceScore: i.compliance_score,
+    confidence: i.confidence,
+    createdAt: i.created_at,
+    updatedAt: i.updated_at,
+    inspectorId: i.user_id,
+    inspectorName: 'Inspector',
+    product: {
+      id: i.products?.id || '',
+      name: i.products?.name || i.product_name,
+      category: i.products?.category || '',
+      manufacturer: i.products?.manufacturer || i.product_manufacturer,
+      inspectionCount: i.products?.inspection_count || 1,
+    },
+    images: (i.inspection_images || []).map((img: any) => ({
+      id: img.id,
+      url: supabase.storage.from('inspection-images').getPublicUrl(img.storage_path).data.publicUrl,
+      category: img.category,
+      fileName: img.file_name,
+      fileSize: img.file_size
+    })),
+    declarations: (i.declarations || []).map((d: any) => ({
+      id: d.id,
+      type: d.type,
+      label: d.label,
+      extractedText: d.extracted_text,
+      status: d.status,
+      confidence: d.confidence,
+    })),
+    violations: (i.violations || []).map((v: any) => ({
+      id: v.id,
+      inspectionId: v.inspection_id,
+      type: v.type,
+      severity: v.severity,
+      field: v.field,
+      description: v.description,
+      confidence: v.confidence,
+      reviewStatus: v.review_status,
+      reviewNote: v.review_note
+    })),
+    timeline: []
+  };
 }
 
 export async function createInspection(request: CreateInspectionRequest): Promise<Inspection> {

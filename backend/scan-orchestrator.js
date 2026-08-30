@@ -1,4 +1,4 @@
-﻿/**
+/**
  * scan-orchestrator.js - End-to-End Scanning & Compliance Coordinator
  * Orchestrates: Preprocessing -> Multimodal Gemini Extraction -> Field Normalization -> Rule Engine -> Final Report.
  */
@@ -12,7 +12,7 @@ import { buildComplianceReport } from './report-builder.js';
 /**
  * Runs the full end-to-end Legal Metrology compliance pipeline on 1-4 captured package views.
  * @param {Array<string|Buffer>} imageBuffers - 1 to 4 captured package images (base64, dataURL, or Buffer)
- * @param {Object} options - { apiKey, model, allowMock, notes }
+ * @param {Object} options - { apiKey, model, notes }
  * @returns {Promise<Object>} Final structured compliance report
  */
 export async function processFullScan(imageBuffers, options = {}) {

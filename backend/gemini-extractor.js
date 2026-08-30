@@ -134,12 +134,7 @@ export async function extractLabelFields(preparedImages, options = {}) {
   const apiKey = options.apiKey || process.env.GEMINI_API_KEY;
   const modelName = options.model || 'gemini-2.5-flash';
 
-  // If no API key is set, check if mock mode or error
   if (!apiKey) {
-    if (options.allowMock) {
-      console.warn('extractLabelFields: No GEMINI_API_KEY provided. Using mock extraction data.');
-      return getMockExtractionData();
-    }
     return {
       success: false,
       error: 'GEMINI_API_KEY environment variable or options.apiKey is required for live extraction.'
@@ -203,77 +198,9 @@ export async function extractLabelFields(preparedImages, options = {}) {
 
     return validated;
   } catch (err) {
-    if (options.allowMock) {
-      console.warn(`Gemini live API call failed (${err.message}). Using mock extraction data fallback.`);
-      return getMockExtractionData();
-    }
     return {
       success: false,
       error: `Gemini Extraction Failed: ${err.message}`
     };
   }
-}
-
-/**
- * Generates mock extraction data for testing or offline development
- */
-export function getMockExtractionData(preset = 'compliant') {
-  if (preset === 'compliant') {
-    return {
-      success: true,
-      data: {
-        fields: {
-          manufacturer_name: { value: "Britannia Industries Ltd.", source_image_index: 0, confidence: "high" },
-          manufacturer_address: { value: "5/1A Hungerford Street, Kolkata, West Bengal - 700017", source_image_index: 0, confidence: "high" },
-          packer_name: { value: null, source_image_index: null, confidence: "low" },
-          packer_address: { value: null, source_image_index: null, confidence: "low" },
-          importer_name: { value: null, source_image_index: null, confidence: "low" },
-          importer_address: { value: null, source_image_index: null, confidence: "low" },
-          commodity_name: { value: "Biscuits", source_image_index: 0, confidence: "high" },
-          net_quantity_value: { value: 200, source_image_index: 1, confidence: "high" },
-          net_quantity_unit: { value: "g", source_image_index: 1, confidence: "high" },
-          mrp_raw_text: { value: "MRP Rs 30.00 incl. of all taxes", source_image_index: 1, confidence: "high" },
-          mrp_value: { value: 30.00, source_image_index: 1, confidence: "high" },
-          month_year_of_manufacture: { value: "08/2026", source_image_index: 2, confidence: "high" },
-          consumer_care_name: { value: "Consumer Care Manager", source_image_index: 3, confidence: "high" },
-          consumer_care_address: { value: "Britannia Industries Ltd., Prestige Shantiniketan, Whitefield, Bengaluru - 560048", source_image_index: 3, confidence: "high" },
-          consumer_care_phone: { value: "1800-425-4449", source_image_index: 3, confidence: "high" },
-          consumer_care_email: { value: "feedback@britindia.com", source_image_index: 3, confidence: "high" },
-          dimensions: { value: null, source_image_index: null, confidence: "low" },
-          country_of_origin: { value: "India", source_image_index: 0, confidence: "high" }
-        },
-        images_analyzed: 4,
-        notes: "All 4 package faces clearly visible with high contrast printing."
-      }
-    };
-  }
-
-  // Non-compliant preset (missing consumer care, bad MRP format)
-  return {
-    success: true,
-    data: {
-      fields: {
-        manufacturer_name: { value: "Local Bakery Ltd.", source_image_index: 0, confidence: "high" },
-        manufacturer_address: { value: "Industrial Area, Phase 2, Jaipur", source_image_index: 0, confidence: "medium" },
-        packer_name: { value: null, source_image_index: null, confidence: "low" },
-        packer_address: { value: null, source_image_index: null, confidence: "low" },
-        importer_name: { value: null, source_image_index: null, confidence: "low" },
-        importer_address: { value: null, source_image_index: null, confidence: "low" },
-        commodity_name: { value: "Cookies", source_image_index: 0, confidence: "high" },
-        net_quantity_value: { value: 150, source_image_index: 1, confidence: "high" },
-        net_quantity_unit: { value: "g", source_image_index: 1, confidence: "high" },
-        mrp_raw_text: { value: "Price: Rs 40", source_image_index: 1, confidence: "high" },
-        mrp_value: { value: 40.00, source_image_index: 1, confidence: "high" },
-        month_year_of_manufacture: { value: "08/2026", source_image_index: 2, confidence: "high" },
-        consumer_care_name: { value: null, source_image_index: null, confidence: "low" },
-        consumer_care_address: { value: null, source_image_index: null, confidence: "low" },
-        consumer_care_phone: { value: null, source_image_index: null, confidence: "low" },
-        consumer_care_email: { value: null, source_image_index: null, confidence: "low" },
-        dimensions: { value: null, source_image_index: null, confidence: "low" },
-        country_of_origin: { value: null, source_image_index: null, confidence: "low" }
-      },
-      images_analyzed: 4,
-      notes: "Consumer care details absent from all 4 views. MRP missing 'incl. of all taxes'."
-    }
-  };
 }

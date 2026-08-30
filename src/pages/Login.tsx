@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Scale, UserCheck, ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Scale, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 
 export const LoginPage: React.FC = () => {
-  const { login, loginWithEmail, loginAsDemo, isAuthenticated, isLoading, error } = useAuthStore();
+  const { login, loginWithEmail, isAuthenticated, isLoading, error } = useAuthStore();
   const { addToast } = useToastStore();
   const navigate = useNavigate();
 
@@ -64,23 +64,9 @@ export const LoginPage: React.FC = () => {
     } catch (err: any) {
       addToast({
         title: 'Google OAuth Notice',
-        message: err?.message || 'Google OAuth is not enabled in this environment. You can sign in using Email or Quick Demo Access.',
+        message: err?.message || 'Could not connect to Google OAuth provider. Please check your Supabase URL configuration.',
         type: 'warning',
       });
-    }
-  };
-
-  const handleDemoLogin = async (role: 'INSPECTOR' | 'ADMIN') => {
-    try {
-      await loginAsDemo(role);
-      addToast({
-        title: 'Welcome to METRICHECK',
-        message: `Signed in as ${role === 'ADMIN' ? 'Compliance Director (Admin)' : 'Legal Metrology Officer (Inspector)'}`,
-        type: 'success',
-      });
-      navigate('/dashboard');
-    } catch (err) {
-      addToast({ title: 'Error', message: 'Failed to initialize session', type: 'error' });
     }
   };
 
@@ -193,29 +179,6 @@ export const LoginPage: React.FC = () => {
                 </svg>
                 <span>Continue with Google Workspace</span>
               </button>
-
-              {/* Fast Demo Access Buttons */}
-              <div className="pt-2 border-t border-neutral-100">
-                <p className="text-[10px] text-neutral-400 uppercase tracking-wider text-center font-bold mb-2">One-Click Demo Access</p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleDemoLogin('INSPECTOR')}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-primary/5 hover:bg-primary/10 border border-primary/20 text-primary font-medium rounded-xl text-xs transition-colors"
-                  >
-                    <UserCheck className="w-3.5 h-3.5" />
-                    <span>Inspector</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDemoLogin('ADMIN')}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-neutral-700 font-medium rounded-xl text-xs transition-colors"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Admin</span>
-                  </button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>

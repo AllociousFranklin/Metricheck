@@ -61,7 +61,6 @@ export default async function handler(req, res) {
     const report = await processFullScan(images, {
       apiKey,
       model,
-      allowMock: true
     });
 
     return res.status(200).json(report);

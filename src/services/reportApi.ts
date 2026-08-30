@@ -1,33 +1,26 @@
 import type { Report } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { getInspection } from './inspectionApi';
-import { mockReports } from '@/mocks/reports';
 
 export async function getReports(filters?: {
   search?: string;
   status?: string;
 }): Promise<Report[]> {
-  try {
-    let query = supabase.from('reports').select('*, inspections(*, products(*), inspection_images(*), violations(*))');
+  let query = supabase.from('reports').select('*, inspections(*, products(*), inspection_images(*), violations(*))');
 
-    if (filters?.status && filters.status !== 'All') {
-      query = query.eq('status', filters.status);
-    }
-    
-    query = query.order('created_at', { ascending: false });
-
-    const { data, error } = await query;
-    if (!error && data && data.length > 0) {
-      return data.map((r: any) => mapReport(r));
-    }
-  } catch (err) {
-    console.warn('Supabase getReports fallback:', err);
-  }
-
-  let results = [...mockReports];
   if (filters?.status && filters.status !== 'All') {
-    results = results.filter(r => r.status === filters.status || r.assessmentResult === filters.status);
+    query = query.eq('status', filters.status);
   }
+  
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('getReports query error:', error);
+    return [];
+  }
+
+  let results = (data || []).map((r: any) => mapReport(r));
   if (filters?.search) {
     const q = filters.search.toLowerCase();
     results = results.filter(r => 
@@ -40,102 +33,52 @@ export async function getReports(filters?: {
 }
 
 export async function getReport(id: string): Promise<Report> {
-  try {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('*, inspections(*, products(*), inspection_images(*), violations(*))')
-      .eq('id', id)
-      .single();
+  const { data, error } = await supabase
+    .from('reports')
+    .select('*, inspections(*, products(*), inspection_images(*), violations(*))')
+    .eq('id', id)
+    .single();
 
-    if (!error && data) {
-      return mapReport(data);
-    }
-  } catch (err) {
-    console.warn(`Supabase getReport(${id}) fallback:`, err);
+  if (error || !data) {
+    throw new Error(`Report ${id} not found: ${error?.message || 'Record does not exist'}`);
   }
 
-  const found = mockReports.find(r => r.id === id) || mockReports[0];
-  return found;
+  return mapReport(data);
 }
 
 export async function getReportByInspection(inspectionId: string): Promise<Report | null> {
-  try {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('*, inspections(*, products(*), inspection_images(*), violations(*))')
-      .eq('inspection_id', inspectionId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+  const { data, error } = await supabase
+    .from('reports')
+    .select('*, inspections(*, products(*), inspection_images(*), violations(*))')
+    .eq('inspection_id', inspectionId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
 
-    if (!error && data) {
-      return mapReport(data);
-    }
-  } catch (err) {
-    console.warn(`Supabase getReportByInspection(${inspectionId}) fallback:`, err);
+  if (error || !data) {
+    return null;
   }
 
-  return mockReports.find(r => r.inspectionId === inspectionId) || null;
+  return mapReport(data);
 }
 
 export async function generateReport(inspectionId: string): Promise<Report> {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    if (userId) {
-      const inspection = await getInspection(inspectionId);
-      
-      const { data, error } = await supabase.from('reports').insert({
-        inspection_id: inspectionId,
-        user_id: userId,
-        product_id: inspection.product.id,
-        status: 'GENERATED'
-      }).select().single();
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  const inspection = await getInspection(inspectionId);
+  
+  const { data, error } = await supabase.from('reports').insert({
+    inspection_id: inspectionId,
+    user_id: userId,
+    product_id: inspection.product.id,
+    status: 'GENERATED'
+  }).select().single();
 
-      if (!error && data) {
-        return await getReport(data.id);
-      }
-    }
-  } catch (err) {
-    console.warn('Supabase generateReport fallback:', err);
+  if (error || !data) {
+    throw new Error(`Failed to generate report for inspection ${inspectionId}: ${error?.message}`);
   }
 
-  const inspection = await getInspection(inspectionId);
-  const newReport: Report = {
-    id: `rep-${Date.now()}`,
-    inspectionId: inspection.id,
-    productId: inspection.product.id,
-    productName: inspection.product.name,
-    manufacturer: inspection.product.manufacturer,
-    category: inspection.product.category,
-    status: 'GENERATED',
-    assessmentStatus: inspection.status,
-    assessmentResult: inspection.status,
-    complianceScore: inspection.complianceScore,
-    score: inspection.complianceScore,
-    passedChecks: 6,
-    failedChecks: 0,
-    reviewChecks: 0,
-    totalChecks: 6,
-    generatedAt: new Date().toISOString(),
-    generatedDate: new Date().toISOString(),
-    inspectionDate: inspection.createdAt,
-    generatedBy: 'System AI Engine',
-    inspectorName: inspection.inspectorName || 'Field Inspector',
-    ruleSetVersion: '2026.1',
-    evidenceImages: inspection.images?.map(i => i.url) || [],
-    findings: (inspection.violations || []).map(v => ({
-      id: v.id,
-      type: v.type,
-      field: v.field,
-      severity: v.severity,
-      description: v.description,
-      ruleReference: typeof v.ruleReference === 'object' ? `${(v.ruleReference as any)?.ruleNumber || ''} ${(v.ruleReference as any)?.title || ''}`.trim() : (v.ruleReference || ''),
-      reviewStatus: v.reviewStatus
-    }))
-  };
-  mockReports.unshift(newReport);
-  return newReport;
+  return await getReport(data.id);
 }
 
 export async function exportReport(id: string, format: 'pdf' | 'docx' | 'json'): Promise<Blob> {

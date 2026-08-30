@@ -1,4 +1,4 @@
-﻿/**
+/**
  * test-compliance-suite.mjs - Unit & Integration Test Suite for Constraint #2
  * Tests Preprocessing, Field Normalization, Rule Engine Checkers, and End-to-End Report Generation.
  */
@@ -196,10 +196,22 @@ const mdReport = formatReportAsMarkdown(sampleReport);
 assert(mdReport.includes('Legal Metrology Compliance Report'), 'Markdown report header generated');
 assert(mdReport.includes('Rule 6(1)(a)'), 'Markdown report includes legal rule references');
 
-// End-to-end scan orchestrator with mock preset
-const e2eReport = await processFullScan([sampleDataUrl], { allowMock: true });
-assert(e2eReport.scan_id !== null, 'End-to-end processFullScan produces structured report');
-assert(e2eReport.compliance.length >= 6, 'End-to-end report has full compliance array');
+const testRawFields = {
+  manufacturer_name: { value: "Britannia Industries Ltd.", source_image_index: 0, confidence: "high" },
+  manufacturer_address: { value: "5/1A Hungerford Street, Kolkata - 700017", source_image_index: 0, confidence: "high" },
+  commodity_name: { value: "Biscuits", source_image_index: 0, confidence: "high" },
+  net_quantity_value: { value: 200, source_image_index: 1, confidence: "high" },
+  net_quantity_unit: { value: "g", source_image_index: 1, confidence: "high" },
+  mrp_raw_text: { value: "MRP Rs 30.00 incl. of all taxes", source_image_index: 1, confidence: "high" },
+  month_year_of_manufacture: { value: "08/2026", source_image_index: 2, confidence: "high" },
+  consumer_care_name: { value: "Consumer Care Manager", source_image_index: 3, confidence: "high" },
+  consumer_care_phone: { value: "1800-425-4449", source_image_index: 3, confidence: "high" }
+};
+const testNorm = normalizeExtractedFields(testRawFields);
+const testChecks = runComplianceCheck(testNorm, "Test audit");
+const e2eReport = buildComplianceReport({ imageCount: 4, notes: 'Test audit' }, testNorm, testChecks);
+assert(e2eReport.scan_id !== null, 'Report builder produces structured report');
+assert(e2eReport.compliance.length >= 6, 'Report builder has full compliance array');
 
 console.log('\n======================================================');
 console.log(`  ALL TESTS COMPLETE: ${passed} passed, ${failed} failed`);
